@@ -1,3 +1,29 @@
+import { build } from "esbuild";
+const fixtureBundle = build({
+  stdin: {
+    contents:
+      'import {Companions} from "./packages/core/vaults/companions.ts"; import {BrowserVaultFiles} from "./packages/platform-browser/vault-files.ts"; globalThis.jockiTestFiles = {Companions, BrowserVaultFiles};',
+    resolveDir: process.cwd(),
+    loader: "ts",
+  },
+  bundle: true,
+  write: false,
+  platform: "neutral",
+  mainFields: ["module", "main"],
+  format: "iife",
+  target: "es2022",
+}).then((result) => result.outputFiles[0].text);
+const preparedPages = new WeakSet();
+/** Inject fixture code from the checked-out sources; production serves no test API. */
+export async function installFileFixtureAccess(page) {
+  const content = await fixtureBundle;
+  if (!preparedPages.has(page)) {
+    await page.addInitScript({ content });
+    preparedPages.add(page);
+  }
+  if (!(await page.evaluate(() => Boolean(globalThis.jockiTestFiles))))
+    await page.evaluate(content);
+}
 export async function createVaultFile(
   page,
   vault,
@@ -35,6 +61,7 @@ export async function skipVaultSetup(page) {
 /** Simulate an external writer; file import UI is intentionally absent. */
 export async function writeVaultFiles(page, vault, files, folder = "") {
   const rootName = await internalVaultDirectory(page, vault);
+  await installFileFixtureAccess(page);
   await page.evaluate(
     async ({ rootName, files, folder }) => {
       const app = await (
@@ -43,10 +70,7 @@ export async function writeVaultFiles(page, vault, files, folder = "") {
       const root = await app.getDirectoryHandle(rootName);
       for (const file of files) {
         if (file.record) {
-          const { Companions } =
-            await import("/packages/core/vaults/companions.ts");
-          const { BrowserVaultFiles } =
-            await import("/packages/platform-browser/vault-files.ts");
+          const { Companions, BrowserVaultFiles } = globalThis.jockiTestFiles;
           await new Companions(new BrowserVaultFiles(root)).write(
             [folder, file.name].filter(Boolean).join("/"),
             file.record,

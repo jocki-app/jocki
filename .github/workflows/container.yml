@@ -36,7 +36,7 @@ jobs:
     timeout-minutes: 45
     env:
       JOCKI_IMAGE: jocki-ci:local
-      TEST_APP_URL: http://localhost:8080
+      JOCKI_TEST_URL: http://localhost:8080
     outputs:
       version: ${{ steps.version.outputs.version }}
       revision: ${{ steps.version.outputs.revision }}
@@ -87,21 +87,15 @@ jobs:
       - name: Start the peer
         run: docker run -d --name jocki-peer-ci -p 8080:8080 jocki-ci:local
       - name: Install browser
-        run: npx playwright install --with-deps chrome
-      - name: Check pairing, offline writes and reconnection
-        run: node tests/browser/repository.mjs
-      - name: Check offline office editing and exports
-        run: node tests/browser/office.mjs
-      - name: Check published plugin surfaces and offline mail drafts
+        run: npx playwright install --with-deps chromium
+      - name: Check startup, persistence and recovery
+        run: node tests/browser/vault-start.mjs
+      - name: Check history and task saves
+        run: node tests/browser/history-tasks.mjs
+      - name: Check forms, imports and templates
         run: |
-          node tests/browser/plugins.mjs
-          node tests/browser/mail.mjs
-          node tests/browser/plugin-inventory.mjs
-          node tests/browser/dashboard.mjs
-          node tests/browser/navigation.mjs
-          node tests/browser/inline-records.mjs
-          node tests/browser/collection-views.mjs
-          node tests/browser/column-customization.mjs
+          node tests/browser/csdb-forms-imports.mjs
+          node tests/browser/workout-templates.mjs
       - name: Check persistent identity after container replacement
         run: node tests/container.mjs
       - name: Stop the peer

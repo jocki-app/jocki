@@ -6,6 +6,7 @@ import {
   openSavedWorkspace,
   createVaultFile,
   skipVaultSetup,
+  installFileFixtureAccess,
 } from "./vault-ui-helpers.mjs";
 const browser = await chromium.launch({ headless: true });
 let page;
@@ -92,14 +93,13 @@ try {
     ["entries"],
   );
   const rootName = await internalVaultDirectory(page, "Recovery");
+  await installFileFixtureAccess(page);
   const saved = await page.evaluate(async (name) => {
     const app = await (
         await navigator.storage.getDirectory()
       ).getDirectoryHandle("jocki"),
       root = await app.getDirectoryHandle(name);
-    const { Companions } = await import("/packages/core/vaults/companions.ts");
-    const { BrowserVaultFiles } =
-      await import("/packages/platform-browser/vault-files.ts");
+    const { Companions, BrowserVaultFiles } = globalThis.jockiTestFiles;
     const companions = new Companions(new BrowserVaultFiles(root));
     const source = new TextDecoder().decode(
       await companions.read("notes.md", "descriptor.json"),
@@ -137,13 +137,9 @@ try {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.evaluate(async ({ name, source }) => {
     const root = await (
-      await (
-        await navigator.storage.getDirectory()
-      ).getDirectoryHandle("jocki")
+      await (await navigator.storage.getDirectory()).getDirectoryHandle("jocki")
     ).getDirectoryHandle(name);
-    const { Companions } = await import("/packages/core/vaults/companions.ts");
-    const { BrowserVaultFiles } =
-      await import("/packages/platform-browser/vault-files.ts");
+    const { Companions, BrowserVaultFiles } = globalThis.jockiTestFiles;
     await new Companions(new BrowserVaultFiles(root)).write(
       "notes.md",
       "descriptor.json",

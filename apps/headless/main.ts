@@ -61,7 +61,7 @@ const runtime = await NodeFileRuntime.open({
   directory: path.resolve(
     values.data ??
       process.env.JOCKI_DATA ??
-      path.join(os.homedir(), ".saddle", "file-workspace"),
+      path.join(os.homedir(), ".jocki", "file-workspace"),
   ),
   name: values.name ?? process.env.JOCKI_NAME,
   vaults: values.vault ?? JSON.parse(process.env.JOCKI_VAULTS ?? "[]"),

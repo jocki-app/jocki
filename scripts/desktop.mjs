@@ -1,9 +1,13 @@
 import { spawn, spawnSync } from "node:child_process";
 delete process.env.ELECTRON_RUN_AS_NODE;
 if (!process.env.ELECTRON_SKIP_BINARY_DOWNLOAD) {
-  const runtime = spawnSync(process.execPath, ["node_modules/electron/install.js"], {
-    stdio: "inherit",
-  });
+  const runtime = spawnSync(
+    process.execPath,
+    ["node_modules/electron/install.js"],
+    {
+      stdio: "inherit",
+    },
+  );
   if (runtime.error) throw runtime.error;
   if (runtime.status !== 0) process.exit(runtime.status ?? 1);
 }
@@ -28,7 +32,13 @@ if (!process.argv.includes("--dev")) {
 const args = process.argv.includes("--dev") ? [] : ["build"];
 const child = spawn(
   process.execPath,
-  ["--max-old-space-size=4096", "node_modules/vite/bin/vite.js", ...args, "--config", "vite.config.ts"],
+  [
+    "--max-old-space-size=4096",
+    "node_modules/vite/bin/vite.js",
+    ...args,
+    "--config",
+    "vite.config.ts",
+  ],
   { stdio: "inherit", env: { ...process.env, JOCKI_NATIVE: "desktop" } },
 );
 child.on("exit", (code) => {
