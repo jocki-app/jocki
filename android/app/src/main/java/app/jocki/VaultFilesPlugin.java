@@ -1,4 +1,4 @@
-package com.jocki.app;
+package app.jocki;
 
 import android.app.Activity;
 import android.content.Intent;

@@ -1,13 +1,13 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "com.jocki.app"
+    namespace "app.jocki"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.jocki.app"
+        applicationId "app.jocki"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 3
+        versionCode 1
         versionName "0.3.0-dev.20261004201911"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {

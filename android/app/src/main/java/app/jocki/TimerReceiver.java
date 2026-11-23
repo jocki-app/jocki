@@ -1,4 +1,4 @@
-package com.jocki.app;
+package app.jocki;
 import android.app.*;
 import android.content.*;
 import android.media.AudioAttributes;

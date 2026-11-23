@@ -1,4 +1,4 @@
-package com.jocki.app;
+package app.jocki;
 
 import com.getcapacitor.BridgeActivity;
 
