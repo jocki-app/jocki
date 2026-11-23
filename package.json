@@ -18,7 +18,7 @@
     "build:linux": "npm run build:desktop && electron-builder --linux AppImage deb --x64",
     "prepare:ios": "npm run build:client && cap sync ios",
     "prepare:android": "npm run build:client && cap sync android",
-    "build:ios": "npm run prepare:ios && xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release -destination generic/platform=iOS -derivedDataPath release/ios CODE_SIGNING_ALLOWED=NO",
+    "build:ios": "npm run prepare:ios && xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release -destination generic/platform=iOS -derivedDataPath release/ios CODE_SIGNING_ALLOWED=NO",
     "build:android": "npm run prepare:android && cd android && ./gradlew assembleRelease",
     "preview": "vite preview",
     "electron:dev": "node scripts/desktop.mjs --dev",

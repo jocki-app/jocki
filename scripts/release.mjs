@@ -20,14 +20,9 @@ function git(...args) {
   }).trim();
 }
 
-// These local planning documents are deliberately outside release source control.
 const changes = git("status", "--porcelain", "--untracked-files=all")
   .split("\n")
-  .filter(
-    (line) =>
-      line &&
-      !/^\?\? docs\/(rebuild-plan|implementation-status)\.md$/.test(line),
-  );
+  .filter(Boolean);
 if (changes.length) {
   console.error("The working tree must be clean before creating a release.");
   console.error("Commit or stash your changes, then run the command again.");

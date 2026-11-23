@@ -4,11 +4,11 @@ Use the existing release entry point from a checked-in branch that matches its u
 
 ```sh
 make release version=dev
-make release version=0.4.0
-make release version=0.4.0-rc.1
+make release version=0.1.0
+make release version=0.1.0-rc.1
 ```
 
-`dev` resolves to an ordinary immutable SemVer prerelease, for example `0.3.0-dev.20261004193000`. It does not move an old tag or overwrite a stable release. Each dev release is marked as a GitHub prerelease; the website discovers the newest published dev release and its actual assets. Stable releases remain separate. The two local planning documents are excluded from release cleanliness checks only when untracked; all other source changes must be committed. They are never included by the script.
+`dev` resolves to an ordinary immutable SemVer prerelease, for example `0.1.0-dev.20261122093000`. It does not move an old tag or overwrite a stable release. Each dev release is marked as a GitHub prerelease; the website discovers the newest published dev release and its actual assets. Stable releases remain separate. All source changes, including untracked files, must be committed before creating a release.
 
 The script runs tests and the full shared build, updates npm/native versions, increments native build numbers, commits the version, and atomically pushes the branch and tag. iOS keeps a numeric marketing version. GitHub Actions verifies the core and SDK, builds all platforms, verifies the container, and publishes a release only after all jobs succeed. Check progress with `gh run list --workflow release.yml`. A failed run can be rerun, or dispatched with its existing tag. Publication uses a draft until all downloads and checksums are uploaded.
 
@@ -44,4 +44,4 @@ To configure your own repository, generate a key with `keytool`, then use `gh se
 
 ## Website
 
-The independent `jocki/website` repository serves the public marketing site. Its Downloads section calls the public GitHub Releases API, selects the newest completed development prerelease, and maps asset suffixes from `artifactName` / the release workflow. A short local session cache reduces API requests. With JavaScript disabled or the API unavailable, links still lead to the GitHub releases list. No key or token is placed in the website.
+The independent `jocki-app/website` repository serves the public marketing site. Its Downloads section calls the public GitHub Releases API, selects the newest published release with downloadable assets, and maps asset suffixes from `artifactName` / the release workflow. A short local session cache reduces API requests. With JavaScript disabled or the API unavailable, links still lead to the GitHub releases list. No key or token is placed in the website.
