@@ -10,7 +10,7 @@ make release version=0.1.0-rc.1
 
 `dev` resolves to an ordinary immutable SemVer prerelease, for example `0.1.0-dev.20261122093000`. It does not move an old tag or overwrite a stable release. Each dev release is marked as a GitHub prerelease; the website discovers the newest published dev release and its actual assets. Stable releases remain separate. All source changes, including untracked files, must be committed before creating a release.
 
-The script runs tests and the full shared build, updates npm/native versions, increments native build numbers, commits the version, and atomically pushes the branch and tag. iOS keeps a numeric marketing version. GitHub Actions verifies the core and SDK, builds all platforms, verifies the container, and publishes a release only after all jobs succeed. Check progress with `gh run list --workflow release.yml`. A failed run can be rerun, or dispatched with its existing tag. Publication uses a draft until all downloads and checksums are uploaded.
+The script runs tests and the full shared build, updates npm/native versions, increments native build numbers, commits the version, and atomically pushes the branch and tag. iOS keeps a numeric marketing version. The iOS jobs select Xcode 26.3 for AlarmKit support. GitHub Actions verifies the core and SDK, builds all platforms, verifies the container, and publishes a release only after all jobs succeed. Check progress with `gh run list --workflow release.yml`. A failed run can be rerun, or dispatched with its existing tag. Publication uses a draft until all downloads and checksums are uploaded.
 
 ## Downloads
 

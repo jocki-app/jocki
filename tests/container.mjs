@@ -33,16 +33,23 @@ async function start(ui) {
   const url =
     "http://127.0.0.1:" + docker("port", name, "8080/tcp").split(":").at(-1);
   for (let i = 0; i < 90; i++) {
-    try {
-      const response = await fetch(url + "/api/health");
-      if (response.ok) {
-        const health = await response.json();
-        assert.equal(health.format, "saddle-workspace/1");
-        assert.equal(health.vaults, 1);
-        assert.equal(health.ui, ui);
-        return url;
-      }
-    } catch {}
+    const state = JSON.parse(
+      docker("inspect", "--format", "{{json .State}}", name),
+    );
+    assert.ok(
+      state.Running,
+      `Container stopped before becoming ready: ${state.ExitCode}`,
+    );
+    const response = await fetch(url + "/api/health", {
+      signal: AbortSignal.timeout(2000),
+    }).catch(() => undefined);
+    if (response?.ok) {
+      const health = await response.json();
+      assert.equal(health.format, "saddle-workspace/1");
+      assert.equal(health.vaults, 1);
+      assert.equal(health.ui, ui);
+      return url;
+    }
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
   throw Error("Container health check timed out");
@@ -64,6 +71,16 @@ function fingerprint() {
 try {
   docker("volume", "create", volume);
   docker("volume", "create", vaultVolume);
+  // Opening a folder requires that it already exists, including inside a fresh volume.
+  docker(
+    "run",
+    "--rm",
+    ...mounts,
+    image,
+    "node",
+    "-e",
+    "require('node:fs').mkdirSync('/vaults/Main',{recursive:true})",
+  );
   const first = await start(false);
   assert.equal((await fetch(first)).status, 404);
   const identity = fingerprint();

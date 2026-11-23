@@ -96,6 +96,10 @@ jobs:
         run: |
           node tests/browser/csdb-forms-imports.mjs
           node tests/browser/workout-templates.mjs
+      - name: Check data-view controls and recursive tasks
+        run: |
+          node tests/browser/csdb-data-view.mjs
+          node tests/browser/task-tree-search.mjs
       - name: Check persistent identity after container replacement
         run: node tests/container.mjs
       - name: Stop the peer

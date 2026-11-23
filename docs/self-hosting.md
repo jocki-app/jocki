@@ -6,7 +6,7 @@ Use Node.js 26.10 or later and CMake 3.24 or later. Build with `npm ci && npm ru
 node dist-peer/main.js --data /path/to/app-data --vault /path/to/Work --vault /path/to/Personal --no-ui
 ```
 
-App data and vaults must be separate directories. The runtime owns one local writer per vault, watches ordinary file saves through Chokidar, and uses libgit2 to infer moves from content. An occasional full scan catches missed filesystem events. Every file has its own Automerge document. History and sync are independent vault settings.
+App data and vaults must be separate directories. The runtime owns one local writer per vault, watches ordinary file saves through Chokidar, and uses libgit2 to infer moves from content. An occasional full scan catches missed filesystem events. Files remain ordinary files while history and sharing are off. Enabling either feature creates SADDLE state for the affected files and folders. Overrides inherit down the selected folder tree and stop at its open boundary.
 
 ## Connections and invitations
 
