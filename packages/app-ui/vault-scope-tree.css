@@ -1,0 +1,63 @@
+.vault-scope-color {
+  --scope-tint: var(--color-emerald-500);
+  --scope-strength: calc(18% + var(--scope-ratio, 0) * 32%);
+  --scope-text: var(--color-emerald-950);
+  --scope-background: color-mix(
+    in oklab,
+    var(--scope-tint) var(--scope-strength),
+    var(--popover)
+  );
+  background-color: var(--scope-background);
+  color: var(--scope-text);
+}
+.dark .vault-scope-color {
+  --scope-tint: var(--color-emerald-400);
+  --scope-strength: calc(22% + var(--scope-ratio, 0) * 28%);
+  --scope-text: var(--color-emerald-100);
+}
+/* Zero and unavailable counts remain neutral; empty space stays transparent. */
+.vault-scope-color[data-scope-count="0"],
+.vault-scope-color:not([data-scope-count]) {
+  --scope-background: color-mix(in oklab, var(--muted) 45%, var(--popover));
+  --scope-text: var(--color-zinc-700);
+}
+.dark .vault-scope-color[data-scope-count="0"],
+.dark .vault-scope-color:not([data-scope-count]) {
+  --scope-text: var(--color-zinc-300);
+}
+/* Disabled policies are independent of the retained-version/share count. */
+.vault-scope-color[data-scope-tone="disabled"] {
+  --scope-tint: var(--color-red-500);
+  --scope-strength: 30%;
+  --scope-background: color-mix(
+    in oklab,
+    var(--scope-tint) var(--scope-strength),
+    var(--popover)
+  );
+  --scope-text: var(--color-red-950);
+}
+.vault-scope-color[data-scope-tone="disabled"][data-scope-state="inherited"] {
+  --scope-strength: 10%;
+}
+.dark .vault-scope-color[data-scope-tone="disabled"] {
+  --scope-tint: var(--color-red-400);
+  --scope-strength: 35%;
+  --scope-text: var(--color-red-100);
+}
+.dark
+  .vault-scope-color[data-scope-tone="disabled"][data-scope-state="inherited"] {
+  --scope-strength: 14%;
+}
+.vault-scope-cell:hover {
+  background-color: color-mix(in oklab, var(--scope-background) 88%, black);
+}
+/* The active label changes weight within the existing fixed cell geometry. */
+.vault-scope-cell[data-scope-current] .vault-scope-label {
+  font-weight: 700;
+}
+.vault-scope-cell[data-scope-bottom-left] {
+  border-bottom-left-radius: var(--radius-lg, 0.5rem);
+}
+.vault-scope-cell[data-scope-bottom-right] {
+  border-bottom-right-radius: var(--radius-lg, 0.5rem);
+}

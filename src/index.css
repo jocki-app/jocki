@@ -1,0 +1,361 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "../packages/ui/shadcn.css";
+@import "../packages/app-ui/vault-scope-tree.css";
+@import "@fontsource-variable/geist";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --app-shell-background: #ffffff;
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.98 0.01 80);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: #0b2f4a;
+  --chart-2: #174f78;
+  --chart-3: #2f76a4;
+  --chart-4: #65add8;
+  --chart-5: #9bd8ff;
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: #0b2f4a;
+  --sidebar-primary-foreground: #f7fbff;
+  --sidebar-accent: #e9f5fc;
+  --sidebar-accent-foreground: #0b2f4a;
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: #174f78;
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --app-shell-background: #111111;
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.98 0.01 80);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: #9bd8ff;
+  --sidebar-primary-foreground: #08243a;
+  --sidebar-accent: #17354a;
+  --sidebar-accent-foreground: #bce6ff;
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: #9bd8ff;
+  --chart-1: #bce6ff;
+  --chart-2: #9bd8ff;
+  --chart-3: #65add8;
+  --chart-4: #2f76a4;
+  --chart-5: #174f78;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-app-shell-background: var(--app-shell-background);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-heading: var(--font-sans);
+  --font-sans: "Geist Variable", sans-serif;
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    margin: 0;
+    min-height: 100vh;
+    background: var(--app-shell-background);
+    font-family: var(--font-sans);
+  }
+
+  button,
+  input,
+  select {
+    font: inherit;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+@layer components {
+  .app-shell {
+    @apply min-h-dvh bg-background flex;
+  }
+  .sidebar {
+    @apply fixed inset-y-0 left-0 z-40 w-56 border-r bg-sidebar flex flex-col px-3 py-5;
+  }
+  .brand {
+    @apply flex items-center gap-2 px-3 mb-7 text-lg font-semibold tracking-tight;
+  }
+  .workspace-label {
+    @apply px-3 mb-3 text-xs text-muted-foreground truncate;
+  }
+  .sidebar nav {
+    @apply flex-1 overflow-y-auto space-y-1;
+  }
+  .nav-item {
+    @apply w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors;
+  }
+  .nav-item.active {
+    @apply bg-primary/10 text-primary font-semibold;
+  }
+  .sidebar-bottom {
+    @apply pt-4 mt-4 border-t space-y-1;
+  }
+  .local-status {
+    @apply flex items-center gap-2 text-xs text-muted-foreground px-3 pt-4;
+  }
+  .main-content {
+    @apply ml-56 flex-1 min-w-0 px-8 pb-10;
+  }
+  .page-header {
+    @apply flex justify-between items-center py-8 mb-4;
+  }
+  .page-header h1 {
+    @apply text-3xl font-semibold tracking-tight;
+  }
+  .eyebrow {
+    @apply uppercase text-[10px] font-semibold text-muted-foreground tracking-[0.16em] mb-2;
+  }
+  .page-description {
+    /* The host also suppresses introductions from downloaded plugin pages. */
+    @apply hidden;
+  }
+  .section-heading {
+    @apply flex items-center justify-between mb-3;
+  }
+  .section-heading h2 {
+    @apply text-base font-semibold;
+  }
+  .section-heading span {
+    @apply text-xs text-muted-foreground;
+  }
+  .field-row {
+    @apply grid gap-2 text-sm;
+  }
+  .empty-state {
+    @apply border border-dashed rounded-xl p-12 text-center space-y-3;
+  }
+  .empty-state h3 {
+    @apply font-semibold;
+  }
+  .empty-state p {
+    @apply text-sm text-muted-foreground;
+  }
+  .error-banner {
+    @apply bg-destructive/10 border border-destructive/20 text-destructive text-sm p-3 rounded-lg;
+  }
+  .notice {
+    @apply border rounded-lg bg-muted/40 p-3 text-sm text-muted-foreground;
+  }
+  .timer-card {
+    @apply border rounded-xl p-6 flex flex-wrap gap-6 items-center justify-between bg-card;
+  }
+  .settings-card {
+    @apply border rounded-xl p-6 space-y-2;
+  }
+  .settings-card h2 {
+    @apply font-semibold mb-4;
+  }
+  .upload-button {
+    @apply inline-flex gap-2 justify-center items-center rounded-md border bg-background px-4 h-9 text-sm font-medium cursor-pointer hover:bg-accent;
+  }
+  .welcome-shell {
+    @apply min-h-dvh grid md:grid-cols-2;
+  }
+  .welcome-card {
+    @apply px-8 py-12 md:px-16 lg:px-24 flex flex-col justify-center max-w-3xl;
+  }
+  .welcome-card h1 {
+    @apply text-4xl md:text-5xl font-semibold leading-tight tracking-tight;
+  }
+  .welcome-art {
+    @apply hidden md:grid place-items-center overflow-hidden relative bg-[#0b2f4a] text-[#bce6ff];
+  }
+  .orbit {
+    @apply absolute rounded-full border border-white/10;
+  }
+  .orbit.one {
+    width: 230px;
+    height: 230px;
+  }
+  .orbit.two {
+    width: 400px;
+    height: 400px;
+  }
+  .orbit.three {
+    width: 590px;
+    height: 590px;
+  }
+  .orbit-center {
+    @apply bg-white/10 border border-white/20 rounded-3xl p-8 rotate-[-12deg] shadow-xl;
+  }
+  .art-caption {
+    @apply absolute bottom-16 font-medium text-white/60;
+  }
+}
+@media (max-width: 767px) {
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 160ms;
+    box-shadow: 10px 0 40px #0002;
+  }
+  .sidebar.is-open {
+    transform: translateX(0);
+  }
+  .main-content {
+    margin-left: 0;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .page-header {
+    padding-top: max(24px, env(safe-area-inset-top));
+  }
+}
+
+@layer components {
+  .workspace-shell {
+    @apply min-h-dvh;
+  }
+  .workspace-topbar {
+    @apply sticky top-0 z-30 flex min-h-14 items-center gap-3 border-b bg-background px-4;
+    padding-top: env(safe-area-inset-top, 0px);
+    min-height: calc(3.5rem + env(safe-area-inset-top, 0px));
+    padding-left: max(1rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1rem, env(safe-area-inset-right, 0px));
+  }
+  .workspace-content {
+    @apply min-w-0 p-4 md:p-6;
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+  }
+  .workspace-bottom-bar {
+    @apply fixed inset-x-0 bottom-0 z-30 flex items-center gap-2 border-t bg-background px-3 py-2;
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* Tables scroll horizontally; vertical wheel gestures belong to the page.
+   Row decorations can extend a pixel past the table without creating a second
+   vertical scrollbar. Keep this outside the upstream shadcn primitive. */
+[data-slot="table-container"] {
+  overflow-y: hidden;
+}
+
+/* Shared multiline controls start at input height and size to their content. */
+textarea[data-slot="textarea"],
+textarea[data-slot="input-group-control"] {
+  field-sizing: content;
+  height: auto;
+  min-height: 2rem;
+  padding-block: 0.25rem;
+  line-height: 1.375rem;
+  resize: none;
+}
+
+@media (width < 48rem) {
+  /* iOS magnifies focused fields below 16px; retain larger inherited text. */
+  input,
+  textarea,
+  [contenteditable="true"] {
+    font-size: max(16px, 1em) !important;
+  }
+  .workspace-bottom-bar button {
+    width: 3rem;
+    height: 3rem;
+  }
+  .workspace-bottom-bar button svg {
+    width: 1.5rem !important;
+    height: 1.5rem !important;
+  }
+}
+
+/* Pairing text can be long. Keep the dialogs and their fields within the
+   visible viewport, including phone safe areas and landscape screens. */
+.pairing-dialog {
+  top: calc(
+    50% + (env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) / 2
+  );
+  max-height: calc(
+    100dvh - 2rem - env(safe-area-inset-top, 0px) -
+      env(safe-area-inset-bottom, 0px)
+  );
+  overflow-y: auto;
+}
+textarea.pairing-text {
+  max-height: min(16rem, 40dvh);
+  overflow-y: auto;
+}

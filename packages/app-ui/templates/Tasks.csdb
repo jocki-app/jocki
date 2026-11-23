@@ -1,0 +1,41 @@
+--- csdb
+format: CSDB
+version: 2
+name: jocki.task-list
+schemas:
+  - public
+tables:
+  - public.tasks
+
+--- schema:public
+name: public
+types: {}
+
+--- table:public:tasks
+schema: public
+name: tasks
+columns:
+  id: text
+  uid: text
+  dtstamp: timestamp
+required:
+  - id
+  - uid
+  - dtstamp
+primary_key:
+  columns:
+    - id
+defaults: {}
+comments:
+  jocki.generated:
+    id: uuid
+    uid: uuid
+    dtstamp: timestamp
+unique: []
+foreign_keys: []
+constraints: []
+indexes: []
+computed_fields: {}
+
+--- data:tasks
+id,uid,dtstamp

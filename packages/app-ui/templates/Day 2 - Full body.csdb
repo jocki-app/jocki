@@ -1,0 +1,40 @@
+--- csdb
+format: CSDB
+version: 2
+name: workout.day-2
+schemas:
+  - public
+tables:
+  - public.exercises
+
+--- schema:public
+name: public
+types: {}
+
+--- table:public:exercises
+schema: public
+name: exercises
+columns:
+  name: text
+  sets: integer
+  reps: text
+  date: datetime
+required:
+  - name
+  - sets
+  - reps
+defaults:
+  date: now()
+formats:
+  date: "%Y-%m-%d %H:%M:%S%:z"
+visibility:
+  date: hidden
+
+--- data:exercises
+name,sets,reps,date
+Deadbugs weighted,3,12-15,
+BB squats,3,8-10,
+Neutral grip lat pulldown,3,8-10,
+Cable lateral raise (pulley wrist height),3,12-15,
+Reverse cable fly,3,10-12,
+Overhead cable tricep extension,3,10-12,

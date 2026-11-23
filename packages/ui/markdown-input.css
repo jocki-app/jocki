@@ -1,0 +1,60 @@
+.markdown-field {
+  min-width: 12rem;
+  width: 100%;
+  --atomic-editor-font: var(--font-sans);
+  --atomic-editor-body-size: 1em;
+  --atomic-editor-body-leading: 1.25rem;
+  --atomic-editor-measure: 100%;
+  --atomic-editor-fg: var(--foreground);
+  --atomic-editor-fg-muted: var(--muted-foreground);
+  --atomic-editor-fg-faint: var(--muted-foreground);
+  --atomic-editor-bg: var(--background);
+  --atomic-editor-bg-panel: var(--popover);
+  --atomic-editor-bg-surface: var(--muted);
+  --atomic-editor-border: var(--border);
+  --atomic-editor-accent: var(--primary);
+  --atomic-editor-accent-bright: var(--foreground);
+  --atomic-editor-accent-soft: var(--border);
+  --atomic-editor-link: var(--primary);
+  --atomic-editor-link-hover: var(--muted-foreground);
+  --atomic-editor-code-bg: var(--muted);
+  --atomic-editor-selection-bg: color-mix(
+    in srgb,
+    var(--foreground) 20%,
+    transparent
+  );
+  --atomic-editor-search-bg: color-mix(
+    in srgb,
+    var(--foreground) 15%,
+    transparent
+  );
+  --atomic-editor-search-bg-active: color-mix(
+    in srgb,
+    var(--foreground) 30%,
+    transparent
+  );
+}
+
+.markdown-field .atomic-cm-editor,
+.markdown-field .cm-editor {
+  height: auto;
+  min-height: calc(2rem - 2px);
+}
+
+.markdown-field .cm-scroller {
+  overflow: visible;
+}
+
+.markdown-field .cm-content {
+  padding: 0.25rem 0.625rem;
+  margin: 0;
+  flex: 1;
+}
+
+.markdown-field .cm-editor.cm-focused {
+  outline: none;
+}
+
+.markdown-field[data-readonly] .cm-atomic-task-checkbox {
+  pointer-events: none;
+}

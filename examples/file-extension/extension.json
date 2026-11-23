@@ -1,0 +1,138 @@
+{
+  "api": "jocki-extensions/1",
+  "mimeTypes": ["text/plain"],
+  "id": "example.text-editor",
+  "name": "Example text editor",
+  "version": "1.0.0",
+  "description": "A scoped text editor with a command and Save hook.",
+  "publisher": "example",
+  "license": "MIT",
+  "entrypoints": {
+    "browser": "extension.mjs"
+  },
+  "extensionKind": ["ui"],
+  "contributes": {
+    "editors": [
+      {
+        "id": "example.text-editor.editor",
+        "title": "Example text editor",
+        "selectors": [
+          {
+            "mime": "text/plain",
+            "pattern": "**/*.txt"
+          }
+        ],
+        "requiresContentType": false,
+        "icon": "Code2"
+      },
+      {
+        "id": "example.text-editor.preview",
+        "title": "Text preview",
+        "selectors": [
+          {
+            "mime": "text/plain",
+            "pattern": "**/*.txt"
+          }
+        ],
+        "requiresContentType": false,
+        "priority": "optional",
+        "icon": "FileText"
+      }
+    ],
+    "commands": [
+      {
+        "id": "example.text-editor.uppercase",
+        "title": "Uppercase text"
+      },
+      {
+        "id": "example.text-editor.tools",
+        "title": "Text tools"
+      }
+    ],
+    "menus": [
+      {
+        "location": "editor/title",
+        "command": "example.text-editor.uppercase"
+      },
+      {
+        "location": "explorer/context",
+        "command": "example.text-editor.uppercase"
+      },
+      {
+        "location": "editor/toolbar",
+        "command": "example.text-editor.uppercase",
+        "icon": "Code2",
+        "when": {
+          "mime": "text/plain"
+        }
+      },
+      {
+        "location": "editor/toolbar",
+        "command": "example.text-editor.tools",
+        "icon": "Settings",
+        "when": {
+          "mime": "text/plain"
+        },
+        "popover": {
+          "title": "Text tools",
+          "items": [
+            {
+              "command": "example.text-editor.uppercase",
+              "title": "Uppercase from tools",
+              "icon": "Code2"
+            }
+          ]
+        }
+      }
+    ],
+    "views": [
+      {
+        "id": "example.text-editor.files",
+        "title": "Example text files",
+        "location": "sidebar"
+      },
+      {
+        "id": "example.text-editor.navigator",
+        "title": "Example files",
+        "location": "navigation",
+        "icon": "FileText"
+      }
+    ],
+    "completion": [
+      {
+        "id": "example.text-editor.words",
+        "selectors": [
+          {
+            "mime": "text/plain"
+          }
+        ]
+      }
+    ],
+    "search": [
+      {
+        "id": "example.text-editor.search",
+        "selectors": [
+          {
+            "mime": "text/plain"
+          }
+        ]
+      }
+    ],
+    "configuration": [
+      {
+        "key": "example.text-editor.trim",
+        "title": "Trim trailing whitespace on Save",
+        "type": "boolean",
+        "default": true
+      }
+    ],
+    "templates": [
+      {
+        "id": "example.text-editor.note",
+        "title": "Text note",
+        "extension": ".txt",
+        "text": "New note\n"
+      }
+    ]
+  }
+}
