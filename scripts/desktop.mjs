@@ -1,5 +1,12 @@
 import { spawn, spawnSync } from "node:child_process";
 delete process.env.ELECTRON_RUN_AS_NODE;
+if (!process.env.ELECTRON_SKIP_BINARY_DOWNLOAD) {
+  const runtime = spawnSync(process.execPath, ["node_modules/electron/install.js"], {
+    stdio: "inherit",
+  });
+  if (runtime.error) throw runtime.error;
+  if (runtime.status !== 0) process.exit(runtime.status ?? 1);
+}
 const native = spawnSync(process.execPath, ["scripts/build-vault-native.mjs"], {
   stdio: "inherit",
 });

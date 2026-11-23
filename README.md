@@ -21,7 +21,7 @@ npm test
 npm run build
 ```
 
-`npm run build:web`, `npm run build:desktop` and `npm run build:peer` verify the main runtime targets. Mobile builds use the checked-in native projects and Capacitor commands in the Makefile. Native folder access and content-based rename matching use explicit filesystem capabilities and libgit2.
+`npm run build:web`, `npm run build:desktop` and `npm run build:peer` verify the main runtime targets. Mobile builds use the checked-in native projects and Capacitor commands in the Makefile. Native folder access and content-based rename matching use explicit filesystem capabilities and libgit2. Desktop commands install the pinned Electron runtime on first use; web and headless installs do not need that download.
 
 ## Storage and synchronization
 
