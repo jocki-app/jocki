@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Jocki</string>
+    <string name="title_activity_main">Jocki</string>
+    <string name="package_name">com.jocki.app</string>
+    <string name="custom_url_scheme">com.jocki.app</string>
+</resources>
