@@ -81,7 +81,13 @@ try {
       ),
     },
   ]);
-  await button("Tasks.csdb").click();
+  // Select the initial editor explicitly; this fixture has no saved content type yet.
+  await page
+    .locator('[data-explorer-path="Tasks.csdb"]')
+    .click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Open with", exact: true }).hover();
+  await page.getByRole("menuitem", { name: "Core", exact: true }).hover();
+  await page.getByRole("menuitem", { name: "Properties", exact: true }).click();
   const choose = async (view) => {
     await button("View for Tasks.csdb")
       .filter({ visible: true })
@@ -92,7 +98,6 @@ try {
       .getByRole("button", { name: view, exact: true })
       .click();
   };
-  await choose("Properties");
   await page.getByLabel("Content type", { exact: true }).click();
   await page.getByRole("option", { name: "Task list", exact: true }).click();
   await button("Save").click();
