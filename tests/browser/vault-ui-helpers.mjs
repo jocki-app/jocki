@@ -137,21 +137,25 @@ export async function internalVaultDirectory(page, name) {
         await navigator.storage.getDirectory()
       ).getDirectoryHandle("jocki"),
       storage = await app.getDirectoryHandle("workspace");
-    const catalog = JSON.parse(
-      await (
-        await (await storage.getFileHandle("workspaces.json")).getFile()
-      ).text(),
-    );
+    // OPFS snapshots can become unreadable while an atomic save replaces them.
+    // Retry that specific browser condition, retaining every other failure.
+    const readJson = async (directory, filename) => {
+      for (let attempt = 0; ; attempt++) {
+        try {
+          return JSON.parse(await (await (await directory.getFileHandle(filename)).getFile()).text());
+        } catch (error) {
+          if (error?.name !== "NotReadableError" || attempt === 9) throw error;
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+      }
+    };
+    const catalog = await readJson(storage, "workspaces.json");
     for (const entry of catalog.entries) {
       if (entry.kind !== "internal") continue;
       let root = storage;
       for (const part of entry.root.split("/").filter(Boolean))
         root = await root.getDirectoryHandle(part);
-      const doc = JSON.parse(
-        await (
-          await (await root.getFileHandle("workspace.json")).getFile()
-        ).text(),
-      );
+      const doc = await readJson(root, "workspace.json");
       const id = Object.keys(doc.defaults.rootNames).find(
         (id) => doc.defaults.rootNames[id] === name,
       );
