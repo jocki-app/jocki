@@ -4,6 +4,7 @@ ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ cmake pkg-config zlib1g-dev && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json .npmrc ./
 COPY packages/platform/package.json ./packages/platform/package.json
+COPY vendor ./vendor
 RUN --mount=type=cache,target=/root/.npm npm ci --ignore-scripts && npm rebuild node-pty
 COPY . .
 ARG VITE_PLUGIN_INVENTORY_URL
@@ -14,7 +15,7 @@ RUN npm prune --omit=dev --omit=peer --ignore-scripts
 FROM node:26.10.0-bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends tini ca-certificates zlib1g && rm -rf /var/lib/apt/lists/* && mkdir /data /vaults && chown node:node /data /vaults
 WORKDIR /app
-ARG JOCKI_VERSION=0.3.0
+ARG JOCKI_VERSION=0.1.0
 ARG SOURCE_REVISION=unknown
 LABEL org.opencontainers.image.source="https://github.com/jocki-app/jocki" \
       org.opencontainers.image.documentation="https://github.com/jocki-app/jocki/blob/main/docs/self-hosting.md" \
