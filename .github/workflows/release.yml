@@ -1,0 +1,262 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing stable or prerelease tag to build
+        required: true
+        type: string
+      artifact_run_id:
+        description: Optional completed build run to republish without rebuilding (all build jobs must have passed)
+        required: false
+        type: string
+
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: read
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
+jobs:
+  verify:
+    if: inputs.artifact_run_id == ''
+    name: Verify distributed core and plugin SDK
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26.10.0
+          cache: npm
+      - run: npm ci
+      - name: Check version and tag
+        run: node --input-type=module -e "import {releaseVersion} from './scripts/release-version.mjs'; import fs from 'node:fs'; const v=JSON.parse(fs.readFileSync('package.json')).version; if (releaseVersion(v,v).tag !== process.env.RELEASE_TAG) throw Error('Version/tag mismatch');"
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run core:verify
+      - run: npm run sdk:verify
+      - run: docker compose config --quiet
+
+  desktop:
+    name: ${{ matrix.name }}
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS-arm64
+            runner: macos-15
+            args: --mac dmg zip --arm64
+          - name: macOS-x64
+            runner: macos-15-intel
+            args: --mac dmg zip --x64
+          - name: Windows-x64
+            runner: windows-2022
+            args: --win nsis --x64
+          - name: Linux-x64
+            runner: ubuntu-24.04
+            args: --linux AppImage deb --x64
+          - name: Linux-arm64
+            runner: ubuntu-24.04-arm
+            args: --linux AppImage deb --arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26.10.0
+          cache: npm
+      - run: npm ci
+      - run: npm run build:desktop
+      - name: Check Electron dev startup and live updates
+        if: runner.os == 'macOS'
+        run: node tests/browser/desktop-dev.mjs
+      - run: npx electron-builder ${{ matrix.args }} --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+      - name: Verify macOS downloads and launch the packaged app
+        if: runner.os == 'macOS'
+        run: node scripts/verify-macos-release.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jocki-${{ matrix.name }}
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/*.exe
+            release/*.AppImage
+            release/*.deb
+          if-no-files-found: error
+
+  ios:
+    name: iOS device and simulator
+    needs: verify
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26.10.0
+          cache: npm
+      - run: npm ci
+      - run: make build-ios
+      - name: Archive unsigned iOS app
+        run: ditto -c -k --sequesterRsrc --keepParent release/ios/Build/Products/Release-iphoneos/App.app "release/Jocki-${RELEASE_TAG#v}-ios-unsigned.zip"
+      - name: Build simulator app
+        run: |
+          xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath release/ios-simulator ARCHS=arm64 CODE_SIGNING_ALLOWED=NO
+          ditto -c -k --sequesterRsrc --keepParent release/ios-simulator/Build/Products/Release-iphonesimulator/App.app "release/Jocki-${RELEASE_TAG#v}-ios-simulator-arm64.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jocki-iOS
+          path: release/*-ios-*.zip
+          if-no-files-found: error
+
+  android:
+    name: Android
+    needs: verify
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26.10.0
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+      - run: npm ci
+      - run: make build-android
+      - name: Sign development APK or retain unsigned stable APK
+        env:
+          DEV_KEYSTORE: ${{ secrets.JOCKI_DEV_ANDROID_KEYSTORE }}
+          DEV_PASSWORD: ${{ secrets.JOCKI_DEV_ANDROID_PASSWORD }}
+        run: |
+          mkdir -p release
+          if [[ "$RELEASE_TAG" == *-dev.* ]]; then
+            test -n "$DEV_KEYSTORE" && test -n "$DEV_PASSWORD"
+            printf '%s' "$DEV_KEYSTORE" | base64 --decode > "$RUNNER_TEMP/dev.jks"
+            tools=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
+            "$tools/zipalign" -P 16 -f 4 android/app/build/outputs/apk/release/app-release-unsigned.apk "$RUNNER_TEMP/aligned.apk"
+            "$tools/apksigner" sign --ks "$RUNNER_TEMP/dev.jks" --ks-key-alias jocki-dev --ks-pass env:DEV_PASSWORD --key-pass env:DEV_PASSWORD --out "release/Jocki-${RELEASE_TAG#v}-android.apk" "$RUNNER_TEMP/aligned.apk"
+            "$tools/apksigner" verify "release/Jocki-${RELEASE_TAG#v}-android.apk"
+            rm "$RUNNER_TEMP/dev.jks"
+          else
+            cp android/app/build/outputs/apk/release/app-release-unsigned.apk "release/Jocki-${RELEASE_TAG#v}-android-unsigned.apk"
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jocki-Android
+          path: release/*.apk
+          if-no-files-found: error
+
+  web:
+    name: Web bundle and server Compose
+    needs: verify
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26.10.0
+          cache: npm
+      - run: npm ci
+      - run: npm run build:web
+      - name: Package web files and pinned server configuration
+        run: |
+          mkdir -p release
+          cp docs/web-release.md dist/README.md
+          (cd dist && zip -qr "../release/Jocki-${RELEASE_TAG#v}-web.zip" .)
+          node scripts/release-compose.mjs "release/Jocki-${RELEASE_TAG#v}-server.compose.yaml"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jocki-Web
+          path: release/*
+          if-no-files-found: error
+
+  container:
+    name: Container
+    needs: verify
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/container.yml
+    with:
+      ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+      publish: true
+
+  publish:
+    name: Publish GitHub release
+    needs: [desktop, ios, android, web, container]
+    if: >-
+      always() && !cancelled() &&
+      ((needs.desktop.result == 'success' && needs.ios.result == 'success' &&
+      needs.android.result == 'success' && needs.web.result == 'success' &&
+      needs.container.result == 'success') ||
+      (github.event_name == 'workflow_dispatch' && inputs.artifact_run_id != ''))
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26.10.0
+      - name: Validate previously built artifacts before republishing
+        if: inputs.artifact_run_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: ${{ inputs.artifact_run_id }}
+        run: |
+          node --input-type=module <<'NODE'
+          import {execFileSync} from 'node:child_process';
+          const id=process.env.SOURCE_RUN;
+          if (!/^\d+$/.test(id)) throw Error('Invalid build run ID');
+          const api=(suffix)=>JSON.parse(execFileSync('gh',['api',`repos/${process.env.GITHUB_REPOSITORY}/actions/runs/${id}${suffix}`],{encoding:'utf8'}));
+          const run=api('');
+          const sha=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
+          if (run.head_sha!==sha || run.status!=='completed' || !run.path.startsWith('.github/workflows/release.yml')) throw Error('Build run does not match the selected release commit');
+          const jobs=api('/jobs?per_page=100').jobs;
+          for (const name of ['Verify distributed core and plugin SDK','macOS-arm64','macOS-x64','Windows-x64','Linux-x64','Linux-arm64','iOS device and simulator','Android','Web bundle and server Compose','Container / Build and exercise the distributed peer','Container / Publish verified amd64 and arm64 image'])
+            if (!jobs.some(job=>job.name===name && job.conclusion==='success')) throw Error(`Required build did not pass: ${name}`);
+          NODE
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: jocki-*
+          run-id: ${{ inputs.artifact_run_id || github.run_id }}
+          github-token: ${{ github.token }}
+          path: artifacts
+          merge-multiple: true
+      - name: Normalize Linux architecture names for download links
+        run: |
+          node --input-type=module <<'NODE'
+          import {readdirSync,renameSync} from 'node:fs';
+          for (const name of readdirSync('artifacts')) {
+            const normalized=name.replace(/-linux-x86_64\.AppImage$/, '-linux-x64.AppImage').replace(/-linux-amd64\.deb$/, '-linux-x64.deb');
+            if (normalized!==name) renameSync(`artifacts/${name}`,`artifacts/${normalized}`);
+          }
+          NODE
+      - name: Publish complete release with checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/publish-release.mjs artifacts

@@ -1,0 +1,242 @@
+{
+  "name": "jocki",
+  "version": "0.1.0",
+  "description": "Jocki distributed workspace: local replicas, peer synchronization, desktop, mobile and headless",
+  "author": {
+    "name": "Jocki Contributors"
+  },
+  "homepage": "https://jocki.app",
+  "private": true,
+  "type": "module",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run sdk:build && npm run typecheck && npm run build:web && npm run build:peer",
+    "build:web": "vite build --config vite.config.ts",
+    "build:macos": "npm run build:desktop && electron-builder --mac dmg zip --arm64",
+    "build:windows": "npm run build:desktop && electron-builder --win nsis --x64",
+    "build:linux": "npm run build:desktop && electron-builder --linux AppImage deb --x64",
+    "prepare:ios": "npm run build:client && cap sync ios",
+    "prepare:android": "npm run build:client && cap sync android",
+    "build:ios": "npm run prepare:ios && xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release -destination generic/platform=iOS -derivedDataPath release/ios CODE_SIGNING_ALLOWED=NO",
+    "build:android": "npm run prepare:android && cd android && ./gradlew assembleRelease",
+    "preview": "vite preview",
+    "electron:dev": "node scripts/desktop.mjs --dev",
+    "pretest": "npm run build:vault-native",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "package:dir": "npm run build:desktop && electron-builder --dir",
+    "cap:sync": "cap sync",
+    "cap:sync:ios": "cap sync ios",
+    "cap:sync:android": "cap sync android",
+    "cap:open:ios": "cap open ios",
+    "cap:open:android": "cap open android",
+    "dev:native": "vite",
+    "build:client": "vite build --config vite.config.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.check.json",
+    "start": "vite preview --host 0.0.0.0",
+    "office:prepare": "node scripts/office-prepare.mjs",
+    "device": "tsx apps/headless/main.ts",
+    "format": "prettier --write packages src electron scripts tests docs",
+    "build:desktop": "node scripts/desktop.mjs",
+    "postinstall": "node scripts/native-prepare.mjs && npm run sdk:build",
+    "prebuild:web": "npm run sdk:verify && npm run core:verify && npm run ui:verify && node scripts/third-party-notices.mjs && npm run office:prepare",
+    "postbuild:web": "node scripts/offline-assets.mjs",
+    "core:verify": "node scripts/core-release.mjs",
+    "postbuild:client": "node scripts/offline-assets.mjs",
+    "sdk:verify": "node scripts/verify-sdk.mjs",
+    "sdk:build": "node scripts/build-platform.mjs",
+    "plugin:pack": "node --import tsx scripts/pack-plugin.ts",
+    "peer": "tsx apps/headless/main.ts",
+    "build:peer": "node scripts/build-peer.mjs",
+    "prebuild:client": "npm run ui:verify && node scripts/third-party-notices.mjs && npm run office:prepare",
+    "ui:verify": "node scripts/verify-shadcn.mjs",
+    "ui:types": "node scripts/build-ui-types.mjs",
+    "extension:pack": "tsx scripts/pack-file-extension.ts",
+    "build:vault-native": "node scripts/build-vault-native.mjs",
+    "test:vaults": "npm run build:vault-native && vitest run tests/file-vault.test.ts tests/vault-content.test.ts tests/vault-native.test.ts tests/vault-sharing.test.ts tests/file-extension-host.test.ts",
+    "predev": "npm run sdk:build",
+    "registry:update": "node scripts/update-content-types.mjs"
+  },
+  "dependencies": {
+    "@atomic-editor/editor": "^0.6.2",
+    "@automerge/automerge": "3.3.2",
+    "@automerge/automerge-repo": "2.6.0-subduction.49",
+    "@automerge/automerge-repo-bundles": "2.3.0-alpha.0",
+    "@automerge/automerge-repo-keyhive": "0.7.0-alpha.1",
+    "@automerge/automerge-repo-network-broadcastchannel": "2.6.0-subduction.49",
+    "@automerge/automerge-repo-network-messagechannel": "2.6.0-subduction.49",
+    "@automerge/automerge-repo-react-hooks": "2.6.0-subduction.49",
+    "@automerge/automerge-repo-storage-indexeddb": "2.6.0-subduction.49",
+    "@automerge/automerge-repo-storage-nodefs": "2.6.0-subduction.49",
+    "@automerge/automerge-subduction": "0.20.1",
+    "@base-ui/react": "^1.5.0",
+    "@capacitor/android": "^7.6.10",
+    "@capacitor/core": "^7.6.10",
+    "@capacitor/filesystem": "^7.1.9",
+    "@capacitor/ios": "^7.6.10",
+    "@codemirror/autocomplete": "^6.20.3",
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/lang-markdown": "^6.5.2",
+    "@codemirror/language": "^6.12.4",
+    "@codemirror/search": "^6.7.2",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.13",
+    "@duckdb/duckdb-wasm": "1.33.1-dev65.0",
+    "@duckdb/node-api": "1.5.6-r.1",
+    "@fontsource-variable/geist": "^5.2.9",
+    "@lezer/common": "^1.5.3",
+    "@lezer/highlight": "^1.2.5",
+    "@lezer/markdown": "^1.7.2",
+    "@logtape/logtape": "^2.4.2",
+    "@monaco-editor/react": "^4.7.0",
+    "@replit/codemirror-vim": "^6.4.0",
+    "@jocki/platform": "file:packages/platform",
+    "@types/katex": "^0.16.8",
+    "@types/picomatch": "^4.0.3",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "@xyflow/react": "^12.12.0",
+    "apache-arrow": "17.0.0",
+    "chokidar": "^6.0.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
+    "cn": "^0.4.0",
+    "date-fns": "^4.3.0",
+    "dompurify": "^3.4.17",
+    "fs-native-extensions": "^1.5.3",
+    "jszip": "3.10.2",
+    "katex": "^0.19.1",
+    "lexorank": "^1.0.5",
+    "lucide-react": "^0.511.0",
+    "marked": "^18.2.0",
+    "mdast-util-to-string": "^4.0.0",
+    "mermaid": "^12.3.0",
+    "minisearch": "^7.2.0",
+    "monaco-editor": "^0.57.0",
+    "next-themes": "^0.4.6",
+    "openworkflow": "0.10.1",
+    "picomatch": "^4.0.7",
+    "react": "^19.1.0",
+    "react-day-picker": "^10.0.2",
+    "react-dom": "^19.1.0",
+    "remark-frontmatter": "^5.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
+    "remark-parse": "^11.0.0",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.6.0",
+    "tsx": "4.23.15",
+    "typescript": "^5.9.3",
+    "unified": "^11.0.5",
+    "unist-util-visit": "^5.2.0",
+    "vscode-jsonrpc": "^10.0.0",
+    "web-worker": "1.5.0",
+    "yaml": "^2.9.1",
+    "zetajs": "1.2.0",
+    "zod": "^4.6.7",
+    "@csvdatabase/csdb": "file:vendor/csvdatabase-csdb-0.0.0.tgz",
+    "@jocki/saddle": "file:vendor/jocki-saddle-0.1.0.tgz"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.6.10",
+    "@playwright/test": "1.63.0",
+    "@tailwindcss/postcss": "4.3.3",
+    "@tailwindcss/vite": "^4.3.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^24.0.1",
+    "@types/react": "^19.1.6",
+    "@types/react-dom": "^19.1.5",
+    "@vitejs/plugin-react": "^4.5.2",
+    "electron": "44.5.1",
+    "electron-builder": "^26.0.12",
+    "fake-indexeddb": "6.2.5",
+    "jsdom": "^26.1.0",
+    "prettier": "3.9.9",
+    "tailwindcss": "^4.3.0",
+    "tw-animate-css": "^1.4.0",
+    "vite": "^6.3.5",
+    "vite-plugin-electron": "^0.29.0",
+    "vitest": "5.0.3"
+  },
+  "build": {
+    "appId": "com.jocki.app",
+    "artifactName": "Jocki-${version}-${os}-${arch}.${ext}",
+    "productName": "Jocki",
+    "icon": "build/icon.png",
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "build/native-renames/package",
+        "to": "."
+      }
+    ],
+    "directories": {
+      "buildResources": "build",
+      "output": "release"
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "identity": "-",
+      "strictVerify": true,
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Office"
+    },
+    "asarUnpack": [
+      "**/fs-native-extensions/**",
+      "**/node-pty/**",
+      "**/@duckdb/**",
+      "**/web-worker/**",
+      "**/@jocki/platform/assets/duckdb/**"
+    ]
+  },
+  "optionalDependencies": {
+    "node-pty": "1.1.0"
+  },
+  "overrides": {
+    "cloudevents": {
+      "uuid": "11.1.1"
+    },
+    "@automerge/automerge-repo": "$@automerge/automerge-repo",
+    "@automerge/automerge": "$@automerge/automerge",
+    "dompurify": "$dompurify",
+    "katex": "$katex"
+  },
+  "engines": {
+    "node": ">=26.10.0"
+  },
+  "workspaces": [
+    "packages/platform"
+  ],
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": ">=26.10.0",
+      "onFail": "error"
+    }
+  },
+  "license": "GPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jocki-app/jocki.git"
+  }
+}

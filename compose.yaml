@@ -1,0 +1,21 @@
+name: jocki-peer
+services:
+  jocki:
+    image: ${JOCKI_IMAGE:-ghcr.io/jocki/jocki:edge}
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile
+    ports:
+      - "${APP_BIND:-127.0.0.1}:${APP_PORT:-8080}:8080"
+    environment:
+      JOCKI_NAME: ${JOCKI_NAME:-Jocki server}
+      JOCKI_SYNC_CONFIG: ${JOCKI_SYNC_CONFIG:-}
+      JOCKI_VAULTS: ${JOCKI_VAULTS:-[]}
+      JOCKI_SYNC_INTERVAL_MS: ${JOCKI_SYNC_INTERVAL_MS:-30000}
+      JOCKI_SERVE_UI: ${JOCKI_SERVE_UI:-0}
+    volumes:
+      - jocki-data:/data
+    restart: unless-stopped
+    stop_grace_period: 40s
+volumes:
+  jocki-data:

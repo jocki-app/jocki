@@ -1,0 +1,26 @@
+config:
+  runTime: dockerCompose
+  version: ""
+  framework: ""
+  installCommand: ""
+  buildCommand: docker compose pull
+  buildDir: /
+  runCommand: docker compose up -d --no-build
+environments:
+  - key: JOCKI_MODE
+    value: server
+  - key: JOCKI_SERVE_UI
+    value: "0"
+  - key: JOCKI_STORAGE_ONLY
+    value: "1"
+  - key: APP_BIND
+    value: 172.17.0.1
+ports:
+  - protocol: HTTPS
+    targetProtocol: HTTP
+    listeningPort: "443"
+    targetPort: "8080"
+    targetIP: 172.17.0.1
+    public: true
+    path: /
+    isAuth: false
