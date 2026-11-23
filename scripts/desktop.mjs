@@ -28,7 +28,7 @@ if (!process.argv.includes("--dev")) {
 const args = process.argv.includes("--dev") ? [] : ["build"];
 const child = spawn(
   process.execPath,
-  ["node_modules/vite/bin/vite.js", ...args, "--config", "vite.config.ts"],
+  ["--max-old-space-size=4096", "node_modules/vite/bin/vite.js", ...args, "--config", "vite.config.ts"],
   { stdio: "inherit", env: { ...process.env, JOCKI_NATIVE: "desktop" } },
 );
 child.on("exit", (code) => {

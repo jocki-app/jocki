@@ -12,7 +12,7 @@
   "scripts": {
     "dev": "vite",
     "build": "npm run sdk:build && npm run typecheck && npm run build:web && npm run build:peer",
-    "build:web": "vite build --config vite.config.ts",
+    "build:web": "node --max-old-space-size=4096 node_modules/vite/bin/vite.js build --config vite.config.ts",
     "build:macos": "npm run build:desktop && electron-builder --mac dmg zip --arm64",
     "build:windows": "npm run build:desktop && electron-builder --win nsis --x64",
     "build:linux": "npm run build:desktop && electron-builder --linux AppImage deb --x64",
@@ -32,7 +32,7 @@
     "cap:open:ios": "cap open ios",
     "cap:open:android": "cap open android",
     "dev:native": "vite",
-    "build:client": "vite build --config vite.config.ts",
+    "build:client": "node --max-old-space-size=4096 node_modules/vite/bin/vite.js build --config vite.config.ts",
     "typecheck": "tsc --noEmit -p tsconfig.check.json",
     "start": "vite preview --host 0.0.0.0",
     "office:prepare": "node scripts/office-prepare.mjs",
