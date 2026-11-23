@@ -72,7 +72,8 @@ it("shows console-only failures in the GUI and saves redacted, copyable details 
   )!;
   await act(async () => copy.click());
   expect(writeText).toHaveBeenCalledTimes(1);
-  expect(writeText.mock.calls[0][0]).not.toContain("private");
+  expect(writeText.mock.calls[0][0]).not.toContain("token=private");
+  expect(writeText.mock.calls[0][0]).toContain("token=[redacted]");
   const saved = JSON.parse(localStorage.getItem(diagnosticStorageKey)!);
   expect(saved.at(-1).context.operation).toBe("Loading workspace data");
   await act(async () => root!.unmount());

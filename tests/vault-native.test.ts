@@ -162,7 +162,7 @@ it("deletes only explicitly selected Jocki metadata and rejects symlink escapes"
       new Uint8Array([1, 2, 3]),
     );
     await expect(fs.removeTree("note.md")).rejects.toThrow(
-      "Only Jocki metadata",
+      "Only SADDLE metadata",
     );
     await fs.removeTree(".note.md.saddle");
     await expect(

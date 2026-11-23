@@ -13,7 +13,7 @@ it("encodes all share kinds as one-line links without losing Unicode names", () 
       url: generateAutomergeUrl(),
     };
     const link = shareLink(invitation);
-    expect(link).toMatch(/^jocki:\/\/share\/[A-Za-z0-9_-]+$/);
+    expect(link).toMatch(/^saddle:\/\/share\/[A-Za-z0-9_-]+$/);
     expect(parseShareLink("  " + link + "\n")).toEqual(invitation);
     expect(() => parseShareLink(JSON.stringify(invitation))).toThrow();
     expect(() => parseShareLink(link + "?kind=workspace")).toThrow();

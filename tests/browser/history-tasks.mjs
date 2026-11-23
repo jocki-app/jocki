@@ -59,7 +59,7 @@ try {
         JSON.stringify({
           name: "tasks",
           path: "Tasks.csdb",
-          jocki: { contentType: "jocki.task-list" },
+          saddle: { contentType: "jocki.task-list" },
         }),
       ),
     },

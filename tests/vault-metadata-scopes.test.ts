@@ -44,7 +44,7 @@ it("preserves optional companion packages, derives content type and never persis
   expect(
     parseResource(
       text.decode((await new Companions(fs).read("note.md", "resource.json"))!),
-    ).jocki?.contentType,
+    ).saddle?.contentType,
   ).toBe("example.note");
   expect(Object.hasOwn(A.toJS(vault.doc(id)), "contentType")).toBe(false);
   expect(await documents(fs)).toEqual([]);
@@ -303,7 +303,7 @@ it("rejects all metadata on overlap and clears local errors after correction/rec
       serializeResource({
         ...newResource("note.md"),
         metadata: { priority: "low" },
-        jocki: { contentType: "example.note" },
+        saddle: { contentType: "example.note" },
       }),
     ),
   );
@@ -351,7 +351,7 @@ it("restores content and sidecar together through one history entry", async () =
   expect(
     parseResource(
       text.decode((await new Companions(fs).read("note.md", "resource.json"))!),
-    ).jocki?.contentType,
+    ).saddle?.contentType,
   ).toBe("example.old");
   expect(
     (await documents(fs)).filter((name) => name.endsWith("/content.automerge")),

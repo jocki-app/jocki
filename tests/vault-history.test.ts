@@ -397,7 +397,7 @@ it("persists portable view metadata with a header save while leaving unselected 
   draft.resource = {
     name: "tasks",
     path: "tasks.csdb",
-    jocki: { collectionView: { mode: "cards" } },
+    saddle: { collectionView: { mode: "cards" } },
   };
   draft = await vault.save(draft, "", {
     table: "public.tasks",
@@ -411,7 +411,7 @@ it("persists portable view metadata with a header save while leaving unselected 
   expect(reopened.doc(id).resource?.saddle?.collectionView).toEqual({
     mode: "cards",
   });
-  draft.resource!.jocki!.collectionView = { mode: "table" };
+  draft.resource!.saddle!.collectionView = { mode: "table" };
   await vault.save(draft, "", {
     table: "public.tasks",
     ids: [],

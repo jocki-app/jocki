@@ -523,7 +523,7 @@ describe("workspace settings and paths", () => {
     "a/../b",
     "a\\b",
     ".saddle/documents/x",
-    "a/.JOCKI/x",
+    "a/.SADDLE/x",
     "a//b",
     "C:/x",
   ])("rejects %s", (path) => {

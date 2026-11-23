@@ -163,7 +163,7 @@ try {
     const handle = await open(
       path.join(
         os.tmpdir(),
-        "jocki-writer-locks",
+        "saddle-writer-locks",
         "locks",
         createHash("sha256").update(root).digest("hex") + ".lock",
       ),

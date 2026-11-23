@@ -43,7 +43,7 @@ export function redactLog(value: unknown): string {
     .replace(/Bearer\s+\S+/gi, "Bearer [redacted]")
     .replace(/automerge:[a-zA-Z0-9]+/g, "automerge:[redacted]")
     .replace(
-      /jocki:\/\/share\/[A-Za-z0-9_-]+/g,
+      /saddle:\/\/share\/[A-Za-z0-9_-]+/g,
       "saddle://share/[redacted]",
     )
     .replace(/(https?:\/\/[^\s?#]+)[?#][^\s]*/g, "$1[query redacted]")

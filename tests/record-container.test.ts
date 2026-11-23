@@ -33,7 +33,7 @@ it("recovers the previous commit after a torn slot, and rejects damaged payloads
   await fs.writeAtomic(".foreign.saddle", utf8.encode('{"format":1}'));
   await expect(
     new RecordFiles(fs, ".foreign.saddle").list(),
-  ).rejects.toThrow("Invalid Jocki binary");
+  ).rejects.toThrow("Invalid SADDLE binary");
 });
 it("appends Automerge changes, reads only requested ranges and durably prunes deleted history", async () => {
   const fs = new CompanionFiles(),

@@ -253,7 +253,7 @@ it("shares and restores the main file and its sidecar as one protected document"
         name: "note",
         path: "note.md",
         metadata: { owner: "one" },
-        jocki: { contentType: "example.note" },
+        saddle: { contentType: "example.note" },
       },
     });
     await source.create("private.md", utf8.encode("private"));
