@@ -6,7 +6,7 @@ This engine was selected as the smaller full-suite option: the pinned runtime is
 
 ## Provisioning and offline operation
 
-`npm run office:prepare` downloads the official ZetaOffice runtime into `.saddle/office-engine/zeta`. `public/office-release.json` pins the upstream LibreOffice build `efaf0670b4d055f838a2849becb10f08aa06a257`, asset sizes, and SHA-256 digests. Downloads fail closed if the upstream CDN changes. ZetaJS is pinned through the npm lockfile. Platform builds include these assets in `dist/office-engine`, including Docker, Electron and mobile packages. `OFFICE_ASSET_PATH` can select a separately provisioned directory.
+`npm run office:prepare` downloads the official ZetaOffice runtime into `.jocki/office-engine/zeta`. `public/office-release.json` pins the upstream LibreOffice build `efaf0670b4d055f838a2849becb10f08aa06a257`, asset sizes, and SHA-256 digests. Downloads fail closed if the upstream CDN changes. ZetaJS is pinned through the npm lockfile. Platform builds include these assets in `dist/office-engine`, including Docker, Electron and mobile packages. `OFFICE_ASSET_PATH` can select a separately provisioned directory.
 
 On the web, first use verifies the engine bytes and stores them in a local versioned Cache API cache. The service worker serves those pinned assets and the editor frame offline. Engine caches are never synchronized or included in workspace files. Browser cache eviction can require downloading them again. Native bundles serve their packaged files locally.
 

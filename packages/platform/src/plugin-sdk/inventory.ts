@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { invariant } from "../core/errors";
 export const defaultInventoryUrl =
-  "https://raw.githubusercontent.com/jocki/jocki-plugin-inventory/main/plugins.json";
+  "https://raw.githubusercontent.com/jocki-app/jocki/main/registries/plugins.json";
 export const downloadUrlSchema = z
   .string()
   .url()

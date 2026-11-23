@@ -1,6 +1,6 @@
 # Plugin inventory
 
-Optional plugins remain independent `jocki-plugin-<id>` repositories. Devices consume the public [inventory](https://github.com/jocki-app/jocki-plugin-inventory/blob/main/plugins.json); every entry names an HTTPS download URL, checksum, publisher and permissions. Any HTTPS host can distribute a signed archive.
+Optional plugins use independent packages. Devices consume the [reviewed inventory](https://github.com/jocki-app/jocki/blob/main/registries/plugins.json); every published entry names an HTTPS download URL, checksum, publisher and permissions. The initial inventory is empty. Any HTTPS host can distribute a signed archive.
 
 The current distributed [plugin specification](plugins/README.md) lives in this repository alongside `packages/platform`, the authoritative SDK. The inventory repository's original specification describes the v1 compatibility contract. New plugins should supply a portable `entrypoints.core` module and opt into platform capabilities explicitly.
 

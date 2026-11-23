@@ -14,7 +14,7 @@ for (const name of [
 for (const name of await readdir("public/office-templates"))
   files.add("/office-templates/" + name);
 await cp(
-  process.env.OFFICE_ASSET_PATH ?? ".saddle/office-engine/zeta",
+  process.env.OFFICE_ASSET_PATH ?? ".jocki/office-engine/zeta",
   "dist/office-engine",
   { recursive: true },
 );

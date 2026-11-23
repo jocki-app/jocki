@@ -1,15 +1,11 @@
 # Jocki content types
 
-The standalone registry and pull-request workflow live at
-[jocki/jocki-content-types](https://github.com/jocki-app/jocki-content-types).
-This directory is the app's pinned snapshot. Run `npm run registry:update` to
-fetch the pinned commit, or `npm run registry:update -- <full-commit-sha>` for a
-reviewed update. Commit the YAML, generated JSON and provenance together.
+The application owns these shared MIME and content-type contracts. Edit `registry.yaml` and run `npm run registry:update` from the repository root to validate and regenerate `registry.json`. Run `npm run registry:update -- --check` to verify generated output without changing it.
 
 A content type describes file contents, not a plugin's private database. Multiple
 plugins can support the same type. Untyped files remain valid files.
 
-Edit `registry.yaml`, run `npm install && npm run generate && npm run check`, and
+Edit `registry.yaml`, run `npm run registry:update` from the application root, and
 open a pull request including both YAML and generated JSON. Declare MIME types,
 extensions and the smallest useful required fields. Keep additional fields open
 for other plugins. Never include credentials or runtime commands. Incompatible

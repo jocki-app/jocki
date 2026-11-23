@@ -117,7 +117,7 @@ before storing or loading code. Extension inventories use
 never enabled by replicated settings alone.
 
 Shared content contracts belong in
-[jocki-content-types](https://github.com/jocki-app/jocki-content-types).
+[jocki-content-types](https://github.com/jocki-app/jocki/tree/main/registries/jocki-content-types).
 Declare MIME types and minimal required fields there; use a PR for new types.
 Plugin content lives in ordinary vault files rather than plugin-specific database
 tables. Settings are the only plugin-owned state in the workspace document.

@@ -1,5 +1,5 @@
 {
-  "repository": "https://github.com/jocki-app/jocki-content-types",
-  "commit": "44ef33f37babfa799db7ac45d665180afc517854",
-  "localChanges": "CSDB format 2: qualified table contracts; task minimum is independent ID plus required UID/DTSTAMP"
+  "repository": "https://github.com/jocki-app/jocki",
+  "directory": "registries/jocki-content-types",
+  "version": 1
 }

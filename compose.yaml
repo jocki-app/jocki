@@ -1,7 +1,7 @@
 name: jocki-peer
 services:
   jocki:
-    image: ${JOCKI_IMAGE:-ghcr.io/jocki/jocki:edge}
+    image: ${JOCKI_IMAGE:-ghcr.io/jocki-app/jocki:edge}
     build:
       context: .
       dockerfile: deploy/docker/Dockerfile

@@ -11,12 +11,12 @@ Files and folders use the same optional sibling **file** naming rule: `.<full-na
 ```text
 Work/
   notes.md
-  .notes.md.jocki         # one binary container
+  .notes.md.saddle         # one binary container
   Projects/
     tasks.csdb
-    .tasks.csdb.jocki
-  .Projects.jocki         # Projects' own declarations, history and shares
-.Work.jocki               # exists only when Work itself needs a feature
+    .tasks.csdb.saddle
+  .Projects.saddle         # Projects' own declarations, history and shares
+.Work.saddle               # exists only when Work itself needs a feature
 ```
 
 A v1 container begins with `SADDLE01`. Its named records are:

@@ -16,7 +16,7 @@ const release = JSON.parse(
   await readFile("public/office-release.json", "utf8"),
 );
 const root = path.resolve(
-  process.env.OFFICE_ASSET_PATH ?? ".saddle/office-engine/zeta",
+  process.env.OFFICE_ASSET_PATH ?? ".jocki/office-engine/zeta",
 );
 await mkdir(root, { recursive: true });
 async function hash(file) {

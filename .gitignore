@@ -23,7 +23,7 @@ vite.config.d.ts
 .next-dev/
 .env
 .env.local
-.saddle/
+.jocki/
 playwright-report/
 test-results/
 public/offline-assets.json

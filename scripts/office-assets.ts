@@ -26,7 +26,7 @@ export function officeAssets(): Plugin {
     }
     try {
       const root = await realpath(
-        process.env.OFFICE_ASSET_PATH ?? ".saddle/office-engine/zeta",
+        process.env.OFFICE_ASSET_PATH ?? ".jocki/office-engine/zeta",
       );
       const relative = decodeURIComponent(
         new URL(req.url, "http://localhost").pathname.slice(15),
