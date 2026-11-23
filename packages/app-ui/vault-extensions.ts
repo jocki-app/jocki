@@ -1,15 +1,11 @@
 import { parseCSDB } from "../core/vaults/csdb";
 import noteTemplate from "./templates/Note.md?raw";
 import taskTemplate from "./templates/Tasks.csdb?raw";
-import workoutDay1 from "./templates/Day 1 - Full body.csdb?raw";
-import workoutDay2 from "./templates/Day 2 - Full body.csdb?raw";
 export function bundledTemplateSource(path: string) {
   const source = (
     {
       "templates/Note.md": noteTemplate,
       "templates/Tasks.csdb": taskTemplate,
-      "templates/Day 1 - Full body.csdb": workoutDay1,
-      "templates/Day 2 - Full body.csdb": workoutDay2,
     } as Record<string, string>
   )[path];
   if (source === undefined) throw Error("Unknown bundled template file");
@@ -134,14 +130,7 @@ export function registerBundledFileExtensions(host: FileExtensionHost) {
                       file: "templates/Tasks.csdb",
                     },
                   ]
-                : id === "core.csdb"
-                  ? [1, 2].map((day) => ({
-                      id: `core.csdb.workout-day-${day}`,
-                      title: `Day ${day} - Full body`,
-                      extension: ".csdb",
-                      file: `templates/Day ${day} - Full body.csdb`,
-                    }))
-                  : [],
+                : [],
           editors: views.map(({ component, ...view }) => ({
             ...view,
             selectors,

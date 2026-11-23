@@ -69,19 +69,18 @@ All import paths call the official CSDB `merge` API. Multi-file imports merge in
 
 See the CSDB SDK/specification merge documentation for the full JSON contract. `comments` transfers structured comment mappings; it does not copy YAML layout comments or machine indexes.
 
-## Workout templates and current dates
+## Template dates and datetime formats
 
 `date` stores a calendar day. `timestamp` stores a date and time; `datetime` is an alias for `timestamp`. Date/time values can have a per-column text format in the table definition:
 
 ```yaml
 schema: public
-name: exercises
+name: entries
 columns:
   name: text
-  sets: integer
-  reps: text
+  quantity: integer
   date: datetime
-required: [name, sets, reps]
+required: [name, quantity]
 defaults:
   date: now()
 formats:
@@ -130,4 +129,4 @@ destination.merge(template, {"nulls": "defaults", "missing_tables": "create"})
 
 The default merge policy is `nulls: "preserve"`. `nulls: "defaults"` applies to selected incoming columns that are null and have a destination default; non-null source values and unrelated existing destination rows are preserved. Selected updates and replacements use the same rule. Defaults/format definitions are structural when creating a missing table or column; existing table definitions change only when selected by `include` and the metadata conflict policy. `include: ["formats"]` transfers a table's format map independently of its data. The whole merge remains atomic.
 
-Jocki's CSDB templates are instantiated through these SDK commands on creation or template import. Both bundled full-body workout templates have six exercises, no video column, three sets per exercise, their supplied rep ranges, and a hidden `date` column with `now()`. Their template files keep blank date cells, so reusing them produces a fresh timestamp. Existing populated date cells retain their saved value. The default import profile fills blank values from defaults and includes visibility; custom profiles can choose either behavior.
+User-created CSDB templates are instantiated through these SDK commands on creation or template import. A template can keep blank nullable date cells with a `now()` default so each copy receives a fresh timestamp. Existing populated date cells retain their saved value. The default import profile fills blank values from defaults and includes visibility; custom profiles can choose either behavior.

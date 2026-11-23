@@ -54,8 +54,8 @@ export async function skipVaultSetup(page) {
   await page
     .getByRole("dialog", { name: "Add a templates folder?", exact: true })
     .waitFor();
-  // Named folder, Note, Task list, and the two workout templates.
-  for (let index = 0; index < 5; index++)
+  // Named folder, Note, and Task list.
+  for (let index = 0; index < 3; index++)
     await page.getByRole("button", { name: "Skip", exact: true }).click();
 }
 /** Simulate an external writer; file import UI is intentionally absent. */

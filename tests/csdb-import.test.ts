@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { evaluateDefaults } from "@csvdatabase/csdb/portable";
 import {
   applyCSDBFormBuffer,
@@ -251,62 +250,60 @@ describe("native CSDB forms and imports", () => {
   });
 });
 
-describe("workout templates", () => {
-  for (const day of [1, 2])
-    it(`instantiates Day ${day} with fresh hidden dates through CSDB`, () => {
-      const source = readFileSync(
-        new URL(
-          `../packages/app-ui/templates/Day ${day} - Full body.csdb`,
-          import.meta.url,
-        ),
-        "utf8",
-      );
-      const original = new CSDBDraft(source).document.tables.get(
-        "public.exercises",
-      )!;
-      expect(Object.keys(original.schema.columns)).toEqual([
-        "name",
-        "sets",
-        "reps",
-        "date",
-      ]);
-      expect(original.rows).toHaveLength(6);
-      expect(
-        original.rows.every((row) => row.sets === 3 && row.date === null),
-      ).toBe(true);
-      expect(original.schema.defaults.date).toBe("now()");
-      const text = instantiateCSDBTemplate(source),
-        table = new CSDBDraft(text).document.tables.get("public.exercises")!;
-      expect(
-        table.rows.every(
-          (row) =>
-            typeof row.date === "string" &&
-            Number.isFinite(Date.parse(row.date)),
-        ),
-      ).toBe(true);
-      expect(new Set(table.rows.map((row) => row.date)).size).toBe(1);
-      expect(
-        csdbFields(table).find((field) => field.id === "date")?.visibility,
-      ).toBe("hidden");
-      expect(instantiateCSDBTemplate(text)).toBe(text);
-      expect(
-        evaluateDefaults(table, new Date("2030-02-03T12:34:56Z")).date,
-      ).toBe("2030-02-03T12:34:56+00:00");
-      const profile = defaultCSDBImportSettings().profiles[0];
-      const merged = mergeCSDBImport(source, [source], profile);
-      const rows = new CSDBDraft(merged.text).document.tables.get(
-        "public.exercises",
-      )!.rows;
-      expect(rows).toHaveLength(12);
-      expect(rows.slice(0, 6).every((row) => row.date === null)).toBe(true);
-      expect(rows.slice(6).every((row) => typeof row.date === "string")).toBe(
-        true,
-      );
-      const definition = csdbTableDefinition(
-        table,
-        csdbFields(table).filter((field) => field.id !== "date"),
-      );
-      expect(definition.formats).toEqual({});
-      expect(definition.defaults?.date).toBeUndefined();
+describe("populated CSDB templates", () => {
+  it("instantiates user-defined rows with fresh hidden dates through CSDB", () => {
+    const db = CSDBDatabase.create("template_fixture");
+    db.createSchema("public");
+    db.createTable({
+      schema: "public",
+      name: "entries",
+      columns: { name: "text", quantity: "integer", date: "timestamp" },
+      required: ["name", "quantity"],
+      defaults: { date: "now()" },
+      formats: { date: "%Y-%m-%dT%H:%M:%S%:z" },
+      visibility: { date: "hidden" },
     });
+    db.table("public.entries").insert([
+      { name: "First", quantity: 3, date: null },
+      { name: "Second", quantity: 3, date: null },
+    ]);
+    const source = db.toString();
+    const original = new CSDBDraft(source).document.tables.get(
+      "public.entries",
+    )!;
+    expect(original.rows.every((row) => row.date === null)).toBe(true);
+    const text = instantiateCSDBTemplate(source),
+      table = new CSDBDraft(text).document.tables.get("public.entries")!;
+    expect(table.rows).toHaveLength(2);
+    expect(
+      table.rows.every(
+        (row) =>
+          typeof row.date === "string" && Number.isFinite(Date.parse(row.date)),
+      ),
+    ).toBe(true);
+    expect(new Set(table.rows.map((row) => row.date)).size).toBe(1);
+    expect(
+      csdbFields(table).find((field) => field.id === "date")?.visibility,
+    ).toBe("hidden");
+    expect(instantiateCSDBTemplate(text)).toBe(text);
+    expect(evaluateDefaults(table, new Date("2030-02-03T12:34:56Z")).date).toBe(
+      "2030-02-03T12:34:56+00:00",
+    );
+    const profile = defaultCSDBImportSettings().profiles[0];
+    const merged = mergeCSDBImport(source, [source], profile);
+    const rows = new CSDBDraft(merged.text).document.tables.get(
+      "public.entries",
+    )!.rows;
+    expect(rows).toHaveLength(4);
+    expect(rows.slice(0, 2).every((row) => row.date === null)).toBe(true);
+    expect(rows.slice(2).every((row) => typeof row.date === "string")).toBe(
+      true,
+    );
+    const definition = csdbTableDefinition(
+      table,
+      csdbFields(table).filter((field) => field.id !== "date"),
+    );
+    expect(definition.formats).toEqual({});
+    expect(definition.defaults?.date).toBeUndefined();
+  });
 });

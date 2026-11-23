@@ -95,7 +95,7 @@ jobs:
       - name: Check forms, imports and templates
         run: |
           node tests/browser/csdb-forms-imports.mjs
-          node tests/browser/workout-templates.mjs
+          node tests/browser/csdb-templates.mjs
       - name: Check data-view controls and recursive tasks
         run: |
           node tests/browser/csdb-data-view.mjs
