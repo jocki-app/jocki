@@ -1,0 +1,480 @@
+import { reviewInventory } from "./inventory-helpers.mjs";
+import { createInlineEntry, entryByName } from "./navigation-helpers.mjs";
+import {
+  createWorkspace,
+  navigate,
+  addColumnTemplates,
+} from "./navigation-helpers.mjs";
+import { chromium, expect } from "@playwright/test";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+const browser = await chromium.launch({ channel: "chrome", headless: true });
+const context = await browser.newContext({
+    viewport: { width: 1440, height: 1000 },
+  }),
+  page = await context.newPage();
+await reviewInventory(context);
+await context.addInitScript(() =>
+  localStorage.setItem(
+    "jocki.automerge.connection",
+    JSON.stringify({ endpoints: [], syncServer: "keyhive" }),
+  ),
+);
+page.setDefaultTimeout(20000);
+const errors = [];
+page.on("pageerror", (e) => errors.push(e.message));
+const control = (name) =>
+  (name === "Columns" ? page.locator(".workspace-content") : page).getByRole(
+    "button",
+    { name, exact: true },
+  );
+const click = (name) => control(name).click();
+const expectToggleAfterArrows = async (kind) => {
+  const arrows = await page
+    .getByLabel(`Move ${kind} 1 down`, { exact: true })
+    .boundingBox();
+  const toggle = await page
+    .getByRole("switch", { name: `Enable ${kind} 1`, exact: true })
+    .boundingBox();
+  const field = await page
+    .getByLabel(`${kind === "sort" ? "Sort" : "Group"} field 1`, {
+      exact: true,
+    })
+    .boundingBox();
+  expect(toggle.x).toBeGreaterThan(arrows.x + arrows.width);
+  expect(toggle.x + toggle.width).toBeLessThan(field.x);
+};
+const choose = async (label, value) => {
+  await page.getByLabel(label, { exact: true }).click();
+  await page
+    .locator("[data-slot=select-content][data-open]")
+    .getByRole("option", { name: value, exact: true })
+    .click();
+  await expect(
+    page.locator("[data-slot=select-content][data-open]"),
+  ).toHaveCount(0);
+};
+const view = async (name) => {
+  await click("View");
+  await page
+    .locator("[data-slot=dropdown-menu-content][data-open]")
+    .getByRole("menuitemradio", { name, exact: true })
+    .click();
+  await expect(
+    page.locator("[data-slot=dropdown-menu-content][data-open]"),
+  ).toHaveCount(0);
+};
+const records = () => page.locator("[data-record-id]");
+try {
+  await page.goto(process.env.TEST_APP_URL ?? "http://127.0.0.1:5173");
+  await createWorkspace(page);
+  await navigate(page, "Plugins");
+  const install = page
+    .getByRole("row")
+    .filter({ has: page.getByText("Tasks", { exact: true }) });
+  await install.getByRole("button", { name: "Install", exact: true }).click();
+
+  await install.getByRole("button", { name: "Disable", exact: true }).waitFor();
+  await navigate(page, "Tasks");
+  await addColumnTemplates(page, "Tasks", ["Title", "Status", "Description"]);
+  const descriptionInput = page
+    .locator("[data-create-row]")
+    .getByLabel("Description", { exact: true });
+  const titleInput = page
+    .locator("[data-create-row]")
+    .getByLabel("Title", { exact: true });
+  const height = (input) =>
+    input.evaluate((element) => element.getBoundingClientRect().height);
+  await expect
+    .poll(() => height(descriptionInput))
+    .toBe(await height(titleInput));
+  expect(
+    await descriptionInput.evaluate(
+      (element) => getComputedStyle(element).resize,
+    ),
+  ).toBe("none");
+  await descriptionInput.fill("First line\nSecond line\nThird line");
+  await expect
+    .poll(() => height(descriptionInput))
+    .toBeGreaterThan(await height(titleInput));
+  await descriptionInput.fill("");
+  await expect
+    .poll(() => height(descriptionInput))
+    .toBe(await height(titleInput));
+  const longTitle =
+    "Alpha " +
+    "A long task title with words and averylongunbrokenword".repeat(10);
+  for (const [title, status, description] of [
+    [longTitle, "open", "A"],
+    ["Bravo", "open", "B"],
+    ["Charlie", "done", "A"],
+    ["Delta", "done", "B"],
+  ]) {
+    await createInlineEntry(page, {
+      Title: title,
+      Status: status,
+      Description: description,
+    });
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+  }
+  await expect(records()).toHaveCount(4);
+  await expect(page.getByPlaceholder(/Search entries/i)).toHaveCount(0);
+  await expect(page.locator("select:visible")).toHaveCount(0);
+  await page.evaluate(() => {
+    window.tableFlashes = 0;
+    window.tableObserver = new MutationObserver(() => {
+      if (!document.querySelector("[data-record-id]")) window.tableFlashes++;
+    });
+    window.tableObserver.observe(
+      document.querySelector("[data-record-collection]"),
+      { childList: true, subtree: true },
+    );
+  });
+  const delta = entryByName(page, "Delta");
+  await expect(delta.getByLabel("Toggle task completion")).toHaveCount(0);
+  for (const status of ["open", "done"]) {
+    await delta.getByLabel("Status", { exact: true }).click();
+    await page.getByRole("option", { name: status, exact: true }).click();
+    await delta
+      .getByRole("button", { name: "Save entry", exact: true })
+      .click();
+    await expect(
+      delta.getByRole("button", { name: "Save entry", exact: true }),
+    ).toHaveCount(0);
+  }
+  expect(
+    await page.evaluate(() => {
+      window.tableObserver.disconnect();
+      return window.tableFlashes;
+    }),
+  ).toBe(0);
+  await delta
+    .getByRole("button", { name: "Saved on this device", exact: true })
+    .click();
+  await expect(page.getByText("Item storage", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Saved on this device", { exact: true }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  console.log(
+    "CRUD, task actions, stable row refreshes and item sync popover passed",
+  );
+  for (const name of [
+    "Filter",
+    "Sort",
+    "Columns",
+    "Group",
+    "View",
+    "Filter",
+    "View",
+    "Columns",
+    "View",
+    "Sort",
+    "View",
+    "Group",
+  ]) {
+    await click(name);
+    await expect(
+      page.locator(
+        '[data-slot="popover-content"][data-open], [data-slot="combobox-content"][data-open], [data-slot="dropdown-menu-content"][data-open]',
+      ),
+    ).toHaveCount(1);
+  }
+  await click("Filter");
+  await click("Add filter");
+  await choose("Filter field 1", "Title");
+  await choose("Filter operator 1", "Contains");
+  await page.getByLabel("Filter value 1", { exact: true }).fill("Alpha");
+  await expect(records()).toHaveCount(1);
+  await click("Add filter");
+  await choose("Filter field 2", "Status");
+  await choose("Filter value 2", "done");
+  await expect(records()).toHaveCount(0);
+  const where = await page.locator("[data-filter-conjunction]").boundingBox(),
+    and = await page.getByLabel("Filter conjunction 2").boundingBox();
+  expect(where.width).toBe(and.width);
+  const arrows = await page.getByLabel("Move filter 1 up").boundingBox(),
+    toggle = await page
+      .getByLabel("Enable filter 1", { exact: true })
+      .boundingBox();
+  expect(toggle.x).toBeGreaterThan(arrows.x);
+  await choose("Filter conjunction 2", "Or");
+  await expect(records()).toHaveCount(3);
+  await click("Move filter 2 up");
+  await expect(
+    page.getByLabel("Filter field 1", { exact: true }),
+  ).toContainText("Status");
+  await page.getByLabel("Enable filter 1", { exact: true }).click();
+  await expect(records()).toHaveCount(1);
+  await click("Remove filter 2");
+  await click("Remove filter 1");
+  await expect(records()).toHaveCount(4);
+  await click("Sort");
+  await expect(
+    page.getByRole("dialog", { name: "Filter", exact: true }),
+  ).toHaveCount(0);
+  await click("Add sort");
+  await choose("Sort field 1", "Title");
+  await expectToggleAfterArrows("sort");
+  await click("Sort 1 ascending");
+  await expect(
+    records().first().getByLabel("Title", { exact: true }),
+  ).toHaveValue("Delta");
+  await click("Columns");
+  await expect(
+    page.getByRole("dialog", { name: "Sort", exact: true }),
+  ).toHaveCount(0);
+  const visibleFields = () =>
+    page
+      .locator("[data-record-id]")
+      .first()
+      .locator("td[data-field]")
+      .evaluateAll((cells) => cells.map((cell) => cell.dataset.field));
+  const initialFields = await visibleFields();
+  const reorderedFields = [
+    "description",
+    ...initialFields.filter((id) => id !== "description"),
+  ];
+  await page
+    .getByRole("switch", { name: "Show column Description", exact: true })
+    .click();
+  await expect(control("Columns")).toHaveText("Columns");
+  await expect(page.locator('[data-column-row="title"]')).toBeVisible();
+  await expect(page.locator('td[data-field="description"]')).toHaveCount(0);
+  // Hidden columns retain their positions while reordered and across reloads.
+  const description = page.locator('[data-column-row="description"]');
+  for (let i = 0; i < initialFields.indexOf("description"); i++)
+    await description.getByRole("button", { name: /up$/ }).click();
+  await page
+    .getByRole("switch", { name: "Show column Description", exact: true })
+    .click();
+  await expect.poll(visibleFields).toEqual(reorderedFields);
+  const columnArrows = await description
+      .getByRole("button", { name: /down$/ })
+      .boundingBox(),
+    columnToggle = await description.getByRole("switch").boundingBox();
+  expect(columnToggle.x).toBeGreaterThan(columnArrows.x + columnArrows.width);
+  await page
+    .getByRole("switch", { name: "Show column Description", exact: true })
+    .click();
+  await page.reload();
+  await expect(records()).toHaveCount(4, { timeout: 45000 });
+  await click("Columns");
+  await expect(page.locator("[data-column-row]").first()).toHaveAttribute(
+    "data-column-row",
+    "description",
+  );
+  await expect(
+    page.getByRole("switch", { name: "Show column Description", exact: true }),
+  ).not.toBeChecked();
+  await page
+    .getByRole("switch", { name: "Show column Description", exact: true })
+    .click();
+  await expect.poll(visibleFields).toEqual(reorderedFields);
+  for (let i = 0; i < initialFields.indexOf("description"); i++)
+    await description.getByRole("button", { name: /down$/ }).click();
+  await expect.poll(visibleFields).toEqual(initialFields);
+  await page.screenshot({ path: join(tmpdir(), "jocki-columns.png") });
+  await click("Group");
+  await expect(page.locator("[data-column-row]")).toHaveCount(0);
+  await click("Add group");
+  await choose("Group field 1", "Status");
+  await expectToggleAfterArrows("group");
+  await click("Add group");
+  await choose("Group field 2", "Description");
+  await click("Move group 2 up");
+  await expect(page.getByLabel("Group field 1", { exact: true })).toContainText(
+    "Description",
+  );
+  await click("Move group 1 down");
+  await page.getByLabel("Enable group 2", { exact: true }).click();
+  await expect(page.locator('[data-group-heading="description"]')).toHaveCount(
+    0,
+  );
+  await page.getByLabel("Enable group 2", { exact: true }).click();
+  await page.keyboard.press("Escape");
+  await expect(page.locator('[data-group-heading="status"]')).toHaveCount(2);
+  await expect(page.locator('[data-group-heading="description"]')).toHaveCount(
+    4,
+  );
+  await click("Collapse Status: open");
+  await expect(records()).toHaveCount(2);
+  await click("Expand Status: open");
+  await expect(records()).toHaveCount(4);
+  await click("Open group Status: open");
+  await expect(records()).toHaveCount(2);
+  await expect(page.locator("[data-pinned-group]")).toHaveCount(1);
+  await click("Open group Description: A");
+  await expect(records()).toHaveCount(1);
+  await expect(page.locator("[data-pinned-group]")).toHaveCount(2);
+  await expect(
+    page.getByRole("navigation", { name: "Tasks groups" }),
+  ).toContainText("Status: open");
+  const cell = records().locator('td[data-field="title"]');
+  expect(await cell.evaluate((el) => getComputedStyle(el).whiteSpace)).toBe(
+    "normal",
+  );
+  await view("Long table");
+  expect(await cell.evaluate((el) => getComputedStyle(el).whiteSpace)).toBe(
+    "nowrap",
+  );
+  expect(
+    await page
+      .locator('[data-slot="table-container"]')
+      .evaluate((el) => el.scrollWidth > el.clientWidth),
+  ).toBe(true);
+  await view("Board");
+  await expect(page.locator('[data-collection-display="board"]')).toBeVisible();
+  await expect(page.locator("[data-pinned-group]")).toHaveCount(2);
+  await expect(records()).toHaveCount(1);
+  await page
+    .getByRole("navigation", { name: "Tasks groups" })
+    .getByRole("button", { name: "Tasks", exact: true })
+    .click();
+  await expect(page.locator('[data-board-group="status"]')).toHaveCount(2);
+  await expect(page.locator('[data-board-group="description"]')).toHaveCount(4);
+  await page.screenshot({
+    path: join(tmpdir(), "jocki-board.png"),
+    animations: "disabled",
+  });
+  for (const [mode, display] of [
+    ["Short table folder", "short-table"],
+    ["Long table folder", "long-table"],
+    ["Board folder", "board"],
+  ]) {
+    await view(mode);
+    await expect(
+      page.locator('[data-collection-display="folders"]'),
+    ).toBeVisible();
+    await click("Open folder Status: open");
+    await click("Open folder Description: A");
+    await expect(
+      page.locator(`[data-collection-display="${display}"]`),
+    ).toBeVisible();
+    await expect(records()).toHaveCount(1);
+    await expect(page.locator("[data-pinned-group]")).toHaveCount(2);
+    if (display === "board") {
+      await page.reload();
+      await expect(
+        page.locator('[data-collection-view="board-folder"]'),
+      ).toBeVisible();
+      await expect(records()).toHaveCount(1);
+    }
+    await page
+      .getByRole("navigation", { name: "Tasks groups" })
+      .getByRole("button", { name: "Tasks", exact: true })
+      .click();
+  }
+  await view("Short table");
+  await click("Filter");
+  await click("Add filter");
+  await click("Add filter");
+  await page.screenshot({
+    path: join(tmpdir(), "jocki-filter.png"),
+    animations: "disabled",
+  });
+  await page.keyboard.press("Escape");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await click("Group");
+  const popup = await page
+    .getByRole("dialog", { name: "Group", exact: true })
+    .boundingBox();
+  expect(popup.x).toBeGreaterThanOrEqual(0);
+  expect(popup.x + popup.width).toBeLessThanOrEqual(390);
+  await page.keyboard.press("Escape");
+  await view("Board");
+  const board = page.locator('[data-collection-display="board"]');
+  const sticky = page
+    .locator('[data-board-group="status"]')
+    .first()
+    .locator(".sticky")
+    .first();
+  const initialX = (await sticky.boundingBox()).x;
+  await board.evaluate((el) => {
+    el.scrollLeft = 120;
+  });
+  await expect
+    .poll(async () => Math.abs((await sticky.boundingBox()).x - initialX))
+    .toBeLessThanOrEqual(1);
+  await view("Short table");
+  await click("Filter");
+  const filterPopup = await page
+    .getByRole("dialog", { name: "Filter", exact: true })
+    .boundingBox();
+  expect(filterPopup.x + filterPopup.width).toBeLessThanOrEqual(390);
+  await page.screenshot({
+    path: join(tmpdir(), "jocki-mobile.png"),
+    animations: "disabled",
+  });
+  await page.keyboard.press("Escape");
+  await navigate(page, "Settings");
+  await choose("Color theme", "Dark");
+  await navigate(page, "Tasks");
+  await expect(page.locator("html")).toHaveClass(/dark/);
+  await click("Columns");
+  await page.getByRole("textbox", { name: "Find columns" }).fill("Status");
+  await expect(
+    page.getByRole("switch", { name: "Show column Status", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("switch", { name: "Show column Title", exact: true }),
+  ).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(control("Columns")).toBeFocused();
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  for (const [title, kind, selector] of [
+    ["Filter", "filter", "[data-filter-row]"],
+    ["Sort", "sort", "[data-sort-row]"],
+    ["Group", "group", "[data-group-rule]"],
+  ]) {
+    await click(title);
+    const reset = control("Reset " + kind);
+    const add = control("Add " + kind);
+    const resetBox = await reset.boundingBox(),
+      addBox = await add.boundingBox();
+    // Wait for the popover's entrance animation before comparing geometry.
+    await expect
+      .poll(async () => {
+        const a = await reset.boundingBox(),
+          b = await add.boundingBox();
+        return Math.abs(a.y - b.y);
+      })
+      .toBeLessThan(2);
+    expect(resetBox.x).toBeGreaterThan(addBox.x);
+    await reset.click();
+    await expect(page.locator(selector)).toHaveCount(0);
+    await add.click();
+    await expect(page.locator(selector)).toHaveCount(1);
+    await reset.click();
+    await page.keyboard.press("Escape");
+  }
+  await click("Columns");
+  await click("Reset columns");
+  await expect(page.getByRole("textbox", { name: "Find columns" })).toHaveValue(
+    "",
+  );
+  await page.keyboard.press("Escape");
+  await page.reload();
+  await expect(records()).toHaveCount(4);
+  for (const [title, selector] of [
+    ["Filter", "[data-filter-row]"],
+    ["Sort", "[data-sort-row]"],
+    ["Group", "[data-group-rule]"],
+  ]) {
+    await click(title);
+    await expect(page.locator(selector)).toHaveCount(0);
+    await page.keyboard.press("Escape");
+  }
+  expect(errors).toEqual([]);
+  console.log(
+    "Filtering, ordering, exclusive popovers, ordered columns and visibility switches, recursive grouping, six views, breadcrumbs, persisted state and mobile controls passed",
+  );
+} catch (error) {
+  console.error(await page.locator("body").innerText());
+  await page.screenshot({
+    path: join(tmpdir(), "jocki-collection-failure.png"),
+  });
+  throw error;
+} finally {
+  await browser.close();
+}
