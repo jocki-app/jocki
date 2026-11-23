@@ -124,6 +124,14 @@ export function VaultCollectionEditor({
   }, [table, savedTable]);
   const dirtyRow = (id: string) => dirtyRows.has(id);
   const dirtyIds = [...dirtyRows];
+  // FileVault's selected-row save contract addresses string IDs, independently of the view.
+  const canSaveRows = Boolean(
+    onSaveRows &&
+    table?.schema.primary_key?.columns.join() === "id" &&
+    table.rows.every((row) => typeof row.id === "string") &&
+    savedTable?.rows.every((row) => typeof row.id === "string"),
+  );
+  const canDiscardRows = tasks || canSaveRows;
   const saveRows = async (
     ids: string[],
     description?: string,
@@ -291,7 +299,7 @@ export function VaultCollectionEditor({
           ),
       );
     });
-    if (tasks && onSaveRows) {
+    if (canSaveRows) {
       setSelectedRows(ids);
       void saveRows(ids)
         .then(() => setSelectedRows([]))
@@ -426,8 +434,7 @@ export function VaultCollectionEditor({
                       setSelectedRows(checked ? filtered.map((r) => r.id) : [])
                     }
                   />
-                  {tasks &&
-                    onSaveRows &&
+                  {canSaveRows &&
                     (() => {
                       const ids = selectedRows.length
                         ? selectedRows
@@ -437,7 +444,11 @@ export function VaultCollectionEditor({
                       return (
                         <SaveStatusButton
                           label={
-                            selectedRows.length ? "Save selected tasks" : "Save"
+                            selectedRows.length
+                              ? `Save selected ${tasks ? "tasks" : "rows"}`
+                              : tasks
+                                ? "Save"
+                                : "Save rows"
                           }
                           dirty={metadataDirty || ids.some(dirtyRow)}
                           saving={savingRows.length > 0}
@@ -480,20 +491,20 @@ export function VaultCollectionEditor({
                         variant="ghost"
                         size="icon-sm"
                         aria-label={
-                          tasks && selectedRows.some(dirtyRow)
+                          canDiscardRows && selectedRows.some(dirtyRow)
                             ? "Discard selected edits"
                             : "Delete selected rows"
                         }
                         disabled={savingRows.length > 0}
                         onClick={() =>
                           perform(() =>
-                            tasks && selectedRows.some(dirtyRow)
+                            canDiscardRows && selectedRows.some(dirtyRow)
                               ? discardRows(selectedRows)
                               : removeRows(selectedRows),
                           )
                         }
                       >
-                        {tasks && selectedRows.some(dirtyRow) ? (
+                        {canDiscardRows && selectedRows.some(dirtyRow) ? (
                           <X />
                         ) : (
                           <Trash2 />
@@ -564,9 +575,9 @@ export function VaultCollectionEditor({
                     }
                   />
                   {dragHandle}
-                  {tasks && onSaveRows && (
+                  {canSaveRows && (
                     <SaveStatusButton
-                      label={`Save task ${String(row.data.title ?? row.id)}`}
+                      label={`Save ${tasks ? "task" : "row"} ${String(row.data.title ?? row.id)}`}
                       dirty={dirtyRow(row.id)}
                       saving={savingRows.includes(row.id)}
                       disabled={
@@ -595,17 +606,17 @@ export function VaultCollectionEditor({
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label={`${tasks && dirtyRow(row.id) ? "Discard edits for" : "Delete"} ${String(row.data.title ?? row.id)}`}
+                    aria-label={`${canDiscardRows && dirtyRow(row.id) ? "Discard edits for" : "Delete"} ${String(row.data.title ?? row.id)}`}
                     disabled={savingRows.length > 0}
                     onClick={() =>
                       perform(() =>
-                        tasks && dirtyRow(row.id)
+                        canDiscardRows && dirtyRow(row.id)
                           ? discardRows([row.id])
                           : removeRows([row.id]),
                       )
                     }
                   >
-                    {tasks && dirtyRow(row.id) ? <X /> : <Trash2 />}
+                    {canDiscardRows && dirtyRow(row.id) ? <X /> : <Trash2 />}
                   </Button>
                 </>
               )}

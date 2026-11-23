@@ -6,6 +6,7 @@ import {
   skipVaultSetup,
   writeVaultFiles,
   openSavedWorkspace,
+  internalVaultDirectory,
 } from "./vault-ui-helpers.mjs";
 const db = CSDBDatabase.create("data_view");
 db.createSchema("public");
@@ -73,6 +74,89 @@ try {
     collection.getByRole("columnheader", { name: "Parent", exact: true }),
   ).toHaveCount(0);
   await expect(collection.locator("[data-record-id]")).toHaveCount(3);
+  const row = (id) => collection.locator(`[data-record-id="${id}"]`);
+  const title = (id) =>
+    row(id).getByRole("textbox", { name: "Title", exact: true });
+  const save = (id) => row(id).locator("[data-save-state]");
+  const rootName = await internalVaultDirectory(page, "Data");
+  const disk = async () => {
+    const value = await page.evaluate(async (rootName) => {
+      const app = await (
+        await navigator.storage.getDirectory()
+      ).getDirectoryHandle("jocki");
+      try {
+        return await (
+          await (
+            await (
+              await app.getDirectoryHandle(rootName)
+            ).getFileHandle("Data.csdb")
+          ).getFile()
+        ).text();
+      } catch (error) {
+        if (error.name === "NotReadableError") return null;
+        throw error;
+      }
+    }, rootName);
+    return value === null
+      ? null
+      : CSDBDatabase.parse(value)
+          .table("public.entries")
+          .all()
+          .map((row) => row.title);
+  };
+  // Tables has no task content type: it must still expose the original row actions.
+  await expect(save("root")).toHaveAttribute("data-save-state", "saved");
+  await expect(save("root").locator(".lucide-hard-drive")).toBeVisible();
+  await expect(
+    row("root").getByRole("button", { name: "Delete Root", exact: true }),
+  ).toBeVisible();
+  await save("root").click();
+  await expect(
+    page.getByRole("dialog", { name: "File storage", exact: true }),
+  ).toContainText("Saved on this device");
+  await page.keyboard.press("Escape");
+  await title("root").fill("Root edited");
+  await title("child").fill("Child private");
+  await expect(save("root")).toHaveAttribute("data-save-state", "dirty");
+  await expect(save("root").locator(".lucide-save")).toBeVisible();
+  await expect(
+    row("root")
+      .getByRole("button", {
+        name: "Discard edits for Root edited",
+        exact: true,
+      })
+      .locator(".lucide-x"),
+  ).toBeVisible();
+  await save("root").click();
+  await expect(save("root")).toHaveAttribute("data-save-state", "saved");
+  await expect(save("child")).toHaveAttribute("data-save-state", "dirty");
+  await expect.poll(disk).toEqual(["Root edited", "Child", "Leaf"]);
+  await row("child")
+    .getByRole("button", {
+      name: "Discard edits for Child private",
+      exact: true,
+    })
+    .click();
+  await expect(title("child")).toHaveValue("Child");
+  await expect(save("child")).toHaveAttribute("data-save-state", "saved");
+  await title("root").fill("Root selected");
+  await title("child").fill("Child selected");
+  await title("leaf").fill("Leaf private");
+  await row("root").getByRole("checkbox").click();
+  await row("child").getByRole("checkbox").click();
+  await collection
+    .getByRole("button", { name: "Save selected rows", exact: true })
+    .click();
+  await expect.poll(disk).toEqual(["Root selected", "Child selected", "Leaf"]);
+  await expect(save("leaf")).toHaveAttribute("data-save-state", "dirty");
+  await row("leaf")
+    .getByRole("button", {
+      name: "Discard edits for Leaf private",
+      exact: true,
+    })
+    .click();
+  await row("root").getByRole("checkbox").click();
+  await row("child").getByRole("checkbox").click();
   await button("Group").click();
   await button("Add group").click();
   await page.getByLabel("Group field 1", { exact: true }).click();
@@ -131,9 +215,26 @@ try {
       exact: true,
     }),
   ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  await expect(save("root")).toHaveAttribute("data-save-state", "saved");
+  await title("root").fill("Root private during delete");
+  await row("leaf")
+    .getByRole("button", { name: "Delete Leaf", exact: true })
+    .click();
+  await expect(row("leaf")).toHaveCount(0);
+  await expect.poll(disk).toEqual(["Root selected", "Child selected"]);
+  await expect(save("root")).toHaveAttribute("data-save-state", "dirty");
+  await row("root")
+    .getByRole("button", {
+      name: "Discard edits for Root private during delete",
+      exact: true,
+    })
+    .click();
+  await expect(title("root")).toHaveValue("Root selected");
   assert.deepEqual(errors, []);
   console.log(
-    "Verified CSDB data-view labels, visibility, Materialize, recursive hierarchy, saved preferences, layout modes and mobile controls.",
+    "Verified CSDB row save/status/discard icons, selected saves, durable row isolation and deletion, labels, visibility, Materialize, recursive hierarchy, saved preferences, layout modes and mobile controls.",
   );
 } catch (error) {
   console.error(await page?.locator("body").innerText());
