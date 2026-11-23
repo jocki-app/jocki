@@ -1,0 +1,745 @@
+import { z } from "zod";
+import { CoreError, invariant } from "../core/errors";
+
+export const pgTypes = [
+  "text",
+  "character varying",
+  "uuid",
+  "boolean",
+  "smallint",
+  "integer",
+  "bigint",
+  "numeric",
+  "double precision",
+  "date",
+  "time without time zone",
+  "timestamp without time zone",
+  "timestamp with time zone",
+  "interval",
+  "jsonb",
+  "bytea",
+] as const;
+export type PgType = (typeof pgTypes)[number];
+export type Value =
+  string | number | boolean | null | Value[] | { [key: string]: Value };
+export const fieldDescriptor = z.object({
+  id: z.string().regex(/^[a-z][a-z0-9_]*$/),
+  label: z.string().min(1),
+  pgType: z.enum(pgTypes),
+  required: z.boolean().default(false),
+  nullable: z.boolean().default(true),
+  array: z.boolean().default(false),
+  inputMode: z.enum(["single", "select", "multiselect", "list"]).optional(),
+  options: z
+    .array(
+      z.custom<Value>((value) => {
+        try {
+          validateJson(value);
+          return value !== null;
+        } catch {
+          return false;
+        }
+      }, "Expected a non-null finite JSON option"),
+    )
+    .max(1000)
+    .optional(),
+  minItems: z.number().int().min(0).optional(),
+  maxItems: z.number().int().positive().optional(),
+  visibility: z.enum(["editable", "viewable", "hidden", "addable"]).optional(),
+  storage: z.literal("custom").optional(),
+  scope: z.enum(["plugin", "shared"]).optional(),
+  length: z.number().int().positive().optional(),
+  precision: z.number().int().min(1).max(38).optional(),
+  scale: z.number().int().min(0).max(38).optional(),
+  min: z.number().optional(),
+  max: z.number().optional(),
+  choices: z.array(z.string()).optional(),
+  default: z.unknown().optional(),
+  control: z
+    .enum([
+      "text",
+      "textarea",
+      "email",
+      "url",
+      "path",
+      "password",
+      "select",
+      "reference",
+      "color",
+      "sorting",
+      "markdown",
+    ])
+    .optional(),
+  reference: z.string().optional(),
+  referenceField: z.string().optional(),
+  referenceLabelField: z.string().optional(),
+  referenceTable: z.string().uuid().optional(),
+  relationship: z.enum(["reference", "parent"]).optional(),
+  description: z.string().optional(),
+  sensitive: z.boolean().default(false),
+  generated: z.enum(["uuid", "timestamp"]).optional(),
+});
+export type Field = z.infer<typeof fieldDescriptor>;
+export interface RecordSchema {
+  id: string;
+  pluginId: string;
+  name: string;
+  version: number;
+  fields: Field[];
+  /** Canonical fields consumed by plugin behavior and offered for column mapping. */
+  featureFields?: string[];
+  standard?: "ical-event" | "ical-alarm" | "time-interval";
+  /** Opt in to core-managed, independently configured tables. */
+  tables?: boolean;
+  validate?: (data: Record<string, Value>) => void;
+}
+export function field(
+  id: string,
+  label: string,
+  pgType: PgType = "text",
+  options: Partial<Field> = {},
+): Field {
+  // Descriptors are persisted as JSON. Optional, unset properties must be absent.
+  return JSON.parse(
+    JSON.stringify(fieldDescriptor.parse({ id, label, pgType, ...options })),
+  ) as Field;
+}
+export function sqlIdentifier(value: string) {
+  invariant(
+    /^[a-z][a-z0-9_]*$/.test(value),
+    "VALIDATION_FAILED",
+    "Invalid SQL identifier",
+  );
+  return `"${value}"`;
+}
+/** SQL storage type; field IDs retain the standardized PostgreSQL vocabulary. */
+export function sqlType(f: Field): string {
+  const types: Record<Field["pgType"], string> = {
+    text: "VARCHAR",
+    "character varying": "VARCHAR",
+    uuid: "UUID",
+    boolean: "BOOLEAN",
+    smallint: "SMALLINT",
+    integer: "INTEGER",
+    bigint: "BIGINT",
+    numeric: "DECIMAL",
+    "double precision": "DOUBLE",
+    date: "DATE",
+    "time without time zone": "TIME",
+    "timestamp without time zone": "TIMESTAMP",
+    "timestamp with time zone": "TIMESTAMPTZ",
+    interval: "INTERVAL",
+    jsonb: "JSON",
+    bytea: "BLOB",
+  };
+  invariant(
+    pgTypes.includes(f.pgType),
+    "VALIDATION_FAILED",
+    "Unsupported field type",
+  );
+  let type = types[f.pgType];
+  if (f.pgType === "numeric") {
+    const precision = f.precision ?? 38,
+      scale = f.scale ?? (f.precision ? 0 : 18);
+    invariant(
+      precision <= 38 && scale <= precision,
+      "VALIDATION_FAILED",
+      "DuckDB decimals require precision ≤ 38 and scale ≤ precision",
+    );
+    type += `(${precision},${scale})`;
+  }
+  return type + (f.array ? "[]" : "");
+}
+function fail(f: Field, reason: string): never {
+  throw new CoreError("VALIDATION_FAILED", `${f.label}: ${reason}`, {
+    field: f.id,
+  });
+}
+function validDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const d = new Date(value + "T00:00:00Z");
+  return Number.isFinite(d.getTime()) && d.toISOString().slice(0, 10) === value;
+}
+function validClock(value: string) {
+  return /^([01]\d|2[0-3]):[0-5]\d:[0-5]\d(\.\d{1,6})?$/.test(value);
+}
+function validateJson(value: unknown, depth = 0): Value {
+  invariant(depth <= 40, "VALIDATION_FAILED", "JSON nesting is too deep");
+  if (value === null || typeof value === "string" || typeof value === "boolean")
+    return value;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (Array.isArray(value)) return value.map((v) => validateJson(v, depth + 1));
+  if (
+    value &&
+    typeof value === "object" &&
+    Object.getPrototypeOf(value) === Object.prototype
+  ) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, v]) => {
+        invariant(
+          !["__proto__", "prototype", "constructor"].includes(key),
+          "VALIDATION_FAILED",
+          "Reserved JSON key",
+        );
+        return [key, validateJson(v, depth + 1)];
+      }),
+    );
+  }
+  throw new CoreError("VALIDATION_FAILED", "Expected a finite JSON value");
+}
+export function decodeField(f: Field, value: unknown): Value {
+  if (value === null) {
+    if (!f.nullable) fail(f, "a value is required");
+    return null;
+  }
+  if (f.array) {
+    if (!Array.isArray(value)) fail(f, "expected a list");
+    if (f.minItems !== undefined && value.length < f.minItems)
+      fail(f, "too few values");
+    if (f.maxItems !== undefined && value.length > f.maxItems)
+      fail(f, "too many values");
+    const values = value.map((v) =>
+      decodeField(
+        {
+          ...f,
+          array: false,
+          inputMode: f.inputMode === "multiselect" ? "select" : "single",
+          nullable: false,
+        },
+        v,
+      ),
+    );
+    if (
+      f.inputMode === "multiselect" &&
+      new Set(values.map((v) => JSON.stringify(v))).size !== values.length
+    )
+      fail(f, "choose each option once");
+    return values;
+  }
+  if (
+    f.inputMode === "select" &&
+    f.options &&
+    !f.options.some(
+      (option) => JSON.stringify(option) === JSON.stringify(value),
+    )
+  )
+    fail(f, "choose a declared option");
+  if (f.pgType === "jsonb") return validateJson(value);
+  if (f.pgType === "boolean") {
+    if (typeof value !== "boolean") fail(f, "expected true or false");
+    return value;
+  }
+  if (["smallint", "integer", "double precision"].includes(f.pgType)) {
+    if (typeof value !== "number" || !Number.isFinite(value))
+      fail(f, "expected a finite number");
+    if (f.pgType !== "double precision" && !Number.isInteger(value))
+      fail(f, "expected an integer");
+    const bounds =
+      f.pgType === "smallint"
+        ? [-32768, 32767]
+        : f.pgType === "integer"
+          ? [-2147483648, 2147483647]
+          : [-Infinity, Infinity];
+    if (
+      value < Math.max(bounds[0], f.min ?? -Infinity) ||
+      value > Math.min(bounds[1], f.max ?? Infinity)
+    )
+      fail(f, "outside the allowed range");
+    return value;
+  }
+  if (typeof value !== "string") fail(f, "expected a string");
+  if (f.length && [...value].length > f.length)
+    fail(f, `maximum length is ${f.length}`);
+  if (f.choices && !f.choices.includes(value))
+    fail(f, "choose a declared option");
+  switch (f.pgType) {
+    case "uuid":
+      if (!z.string().uuid().safeParse(value).success) fail(f, "invalid UUID");
+      return value.toLowerCase();
+    case "bigint": {
+      if (!/^-?(0|[1-9]\d*)$/.test(value))
+        fail(f, "expected an exact integer string");
+      const integer = BigInt(value);
+      if (integer < -9223372036854775808n || integer > 9223372036854775807n)
+        fail(f, "outside PostgreSQL bigint range");
+      return integer.toString();
+    }
+    case "numeric": {
+      if (!/^-?(0|[1-9]\d*)(\.\d+)?$/.test(value))
+        fail(f, "expected an exact decimal string");
+      const [whole, fractional = ""] = value.replace(/^-/, "").split(".");
+      const precision = f.precision ?? 38,
+        scale = f.scale ?? (f.precision ? 0 : 18);
+      if (fractional.length > scale) fail(f, "too many fractional digits");
+      if ((whole === "0" ? 0 : whole.length) > precision - scale)
+        fail(f, "decimal precision exceeded");
+      const normalized = value.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
+      return /^-?0$/.test(normalized) ? "0" : normalized;
+    }
+    case "date":
+      if (!validDate(value)) fail(f, "invalid calendar date");
+      break;
+    case "time without time zone":
+      if (!validClock(value)) fail(f, "invalid wall-clock time");
+      break;
+    case "timestamp without time zone": {
+      const parts = value.split("T");
+      if (parts.length !== 2 || !validDate(parts[0]) || !validClock(parts[1]))
+        fail(f, "expected a local date and time without a zone");
+      break;
+    }
+    case "timestamp with time zone": {
+      if (
+        !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?(Z|[+-]\d{2}:\d{2})$/.test(
+          value,
+        ) ||
+        !validDate(value.slice(0, 10)) ||
+        !validClock(value.slice(11).replace(/(Z|[+-]\d{2}:\d{2})$/, "")) ||
+        !Number.isFinite(Date.parse(value))
+      )
+        fail(f, "expected an ISO timestamp with a zone");
+      // Preserve sub-millisecond precision; PostgreSQL stores instants at microsecond precision.
+      return value;
+    }
+    case "interval":
+      if (
+        !/^-?P(?=\d|T\d)(\d+Y)?(\d+M)?(\d+D)?(T(?=\d)(\d+H)?(\d+M)?(\d+(\.\d+)?S)?)?$/.test(
+          value,
+        )
+      )
+        fail(f, "expected an ISO duration");
+      break;
+    case "bytea":
+      if (
+        !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(
+          value,
+        )
+      )
+        fail(f, "expected canonical base64");
+      break;
+  }
+  if (
+    f.control === "email" &&
+    value &&
+    !z.string().email().safeParse(value).success
+  )
+    fail(f, "invalid email address");
+  if (
+    f.control === "url" &&
+    value &&
+    !z.string().url().safeParse(value).success
+  )
+    fail(f, "invalid URL");
+  return value;
+}
+export function validateRecord(
+  schema: RecordSchema,
+  input: unknown,
+): Record<string, Value> {
+  invariant(
+    input !== null && typeof input === "object" && !Array.isArray(input),
+    "VALIDATION_FAILED",
+    "Expected record fields",
+  );
+  const source = input as Record<string, unknown>;
+  const declared = new Set(schema.fields.map((f) => f.id));
+  for (const key of Object.keys(source))
+    invariant(
+      declared.has(key),
+      "VALIDATION_FAILED",
+      `Undeclared field: ${key}`,
+    );
+  const output: Record<string, Value> = {};
+  for (const f of schema.fields) {
+    const value =
+      source[f.id] === undefined
+        ? f.generated === "uuid"
+          ? crypto.randomUUID()
+          : f.generated === "timestamp"
+            ? new Date().toISOString()
+            : f.default
+        : source[f.id];
+    if (value === undefined) {
+      if (f.required || !f.nullable) fail(f, "required field is missing");
+      output[f.id] = null;
+    } else output[f.id] = decodeField(f, value);
+  }
+  schema.validate?.(output);
+  return output;
+}
+export const legacyTypes: Record<
+  string,
+  { pgType: PgType; control?: Field["control"] }
+> = {
+  uuid: { pgType: "uuid" },
+  string: { pgType: "text" },
+  markdown: { pgType: "text", control: "textarea" },
+  path: { pgType: "text", control: "path" },
+  file_search: { pgType: "text" },
+  filter_task_sources: { pgType: "jsonb" },
+  attribute_reference: { pgType: "uuid", control: "reference" },
+  datetime: { pgType: "timestamp with time zone" },
+  bool: { pgType: "boolean" },
+  int: { pgType: "integer" },
+  float: { pgType: "double precision" },
+};
+export interface Filter {
+  id: string;
+  field: string;
+  operator:
+    | "eq"
+    | "neq"
+    | "contains"
+    | "gt"
+    | "gte"
+    | "lt"
+    | "lte"
+    | "empty"
+    | "not-empty";
+  value: Value;
+  link: "and" | "or";
+  enabled: boolean;
+}
+export interface Sort {
+  field: string;
+  direction: "asc" | "desc";
+  enabled: boolean;
+}
+export interface Query {
+  filters?: Filter[];
+  sorts?: Sort[];
+  search?: string;
+  groupBy?: string;
+  limit?: number;
+}
+const querySchema = z
+  .object({
+    filters: z
+      .array(
+        z
+          .object({
+            id: z.string().max(200),
+            field: z.string(),
+            operator: z.enum([
+              "eq",
+              "neq",
+              "gt",
+              "gte",
+              "lt",
+              "lte",
+              "contains",
+              "empty",
+              "not-empty",
+            ]),
+            link: z.enum(["and", "or"]),
+            enabled: z.boolean(),
+            value: z.unknown().optional(),
+          })
+          .strict(),
+      )
+      .max(100)
+      .optional(),
+    sorts: z
+      .array(
+        z
+          .object({
+            field: z.string(),
+            direction: z.enum(["asc", "desc"]),
+            enabled: z.boolean(),
+          })
+          .strict(),
+      )
+      .max(30)
+      .optional(),
+    search: z.string().max(2000).optional(),
+    groupBy: z.string().optional(),
+    limit: z.number().int().min(1).max(10000).optional(),
+  })
+  .strict();
+export function validateQuery(schema: RecordSchema, input: unknown): Query {
+  const parsed = querySchema.safeParse(input);
+  invariant(parsed.success, "VALIDATION_FAILED", "Invalid query contract");
+  const fields = new Map(schema.fields.map((f) => [f.id, f]));
+  for (const clause of [
+    ...(parsed.data.filters ?? []),
+    ...(parsed.data.sorts ?? []),
+  ]) {
+    invariant(
+      fields.has(clause.field),
+      "VALIDATION_FAILED",
+      "Unknown query field",
+    );
+    if (
+      "operator" in clause &&
+      clause.enabled &&
+      !["empty", "not-empty"].includes(clause.operator)
+    ) {
+      const f = fields.get(clause.field)!;
+      if (clause.operator === "contains") {
+        invariant(
+          f.array || ["text", "character varying", "jsonb"].includes(f.pgType),
+          "VALIDATION_FAILED",
+          "Contains requires text, JSON or an array",
+        );
+        decodeField({ ...f, array: false }, clause.value);
+      } else decodeField(f, clause.value);
+    }
+  }
+  invariant(
+    !parsed.data.groupBy || fields.has(parsed.data.groupBy),
+    "VALIDATION_FAILED",
+    "Unknown grouping field",
+  );
+  return parsed.data as Query;
+}
+function exactDecimal(value: string): [bigint, number] {
+  const [whole, part = ""] = value.split(".");
+  return [BigInt(whole + part), part.length];
+}
+export function compareValues(
+  f: Field,
+  a: Value | undefined,
+  b: Value | undefined,
+): number {
+  if (a == null) return b == null ? 0 : 1;
+  if (b == null) return -1;
+  if (f.array && Array.isArray(a) && Array.isArray(b)) {
+    for (let i = 0; i < Math.min(a.length, b.length); i++) {
+      const difference = compareValues({ ...f, array: false }, a[i], b[i]);
+      if (difference) return difference;
+    }
+    return a.length - b.length;
+  }
+  if (f.pgType === "bigint" || f.pgType === "numeric") {
+    const [x, xs] = exactDecimal(String(a));
+    const [y, ys] = exactDecimal(String(b));
+    const left = x * 10n ** BigInt(ys);
+    const right = y * 10n ** BigInt(xs);
+    return left < right ? -1 : left > right ? 1 : 0;
+  }
+  if (f.pgType === "timestamp with time zone") {
+    const precise = (v: Value) =>
+      BigInt(Date.parse(String(v))) * 1000n +
+      BigInt(
+        (String(v).match(/\.(\d+)/)?.[1] ?? "").padEnd(6, "0").slice(3, 6) ||
+          "0",
+      );
+    const x = precise(a),
+      y = precise(b);
+    return x < y ? -1 : x > y ? 1 : 0;
+  }
+  if (typeof a === "number" && typeof b === "number") return a - b;
+  if (typeof a === "boolean" && typeof b === "boolean")
+    return Number(a) - Number(b);
+  const x = typeof a === "object" ? JSON.stringify(a) : String(a);
+  const y = typeof b === "object" ? JSON.stringify(b) : String(b);
+  return x < y ? -1 : x > y ? 1 : 0;
+}
+export function queryRecords<
+  T extends { id: string; data: Record<string, Value> },
+>(records: T[], schema: RecordSchema, query: Query = {}): T[] {
+  query = validateQuery(schema, query);
+  const fields = new Map(schema.fields.map((f) => [f.id, f]));
+  const filters = (query.filters ?? [])
+    .filter((f) => f.enabled)
+    .map((filter) => {
+      const f = fields.get(filter.field)!;
+      const scalar = { ...f, array: false };
+      const expected = ["empty", "not-empty"].includes(filter.operator)
+        ? filter.value
+        : decodeField(
+            filter.operator === "contains" ? scalar : f,
+            filter.value,
+          );
+      return { filter, f, scalar, expected };
+    });
+  const sorts = (query.sorts ?? [])
+    .filter((sort) => sort.enabled)
+    .map((sort) => ({ ...sort, field: fields.get(sort.field)! }));
+  const search = query.search?.toLowerCase();
+  const result = records.filter((row) => {
+    if (
+      search &&
+      !Object.values(row.data).some((v) =>
+        String(v ?? "")
+          .toLowerCase()
+          .includes(search),
+      )
+    )
+      return false;
+    let matches: boolean | undefined;
+    for (const { filter, f, scalar, expected } of filters) {
+      const actual = row.data[f.id];
+      const empty =
+        actual == null ||
+        actual === "" ||
+        (Array.isArray(actual) && actual.length === 0);
+      const op = filter.operator;
+      const cmp = ["empty", "not-empty", "contains"].includes(op)
+        ? 0
+        : compareValues(f, actual, expected);
+      const hit =
+        op === "empty"
+          ? empty
+          : op === "not-empty"
+            ? !empty
+            : op === "contains"
+              ? Array.isArray(actual)
+                ? actual.some(
+                    (value) => compareValues(scalar, value, expected) === 0,
+                  )
+                : String(actual ?? "")
+                    .toLowerCase()
+                    .includes(String(expected).toLowerCase())
+              : op === "eq"
+                ? cmp === 0
+                : op === "neq"
+                  ? cmp !== 0
+                  : actual == null
+                    ? false
+                    : op === "gt"
+                      ? cmp > 0
+                      : op === "gte"
+                        ? cmp >= 0
+                        : op === "lt"
+                          ? cmp < 0
+                          : cmp <= 0;
+      matches =
+        matches === undefined
+          ? hit
+          : filter.link === "and"
+            ? matches && hit
+            : matches || hit;
+    }
+    return matches ?? true;
+  });
+  result.sort((a, b) => {
+    for (const sort of sorts) {
+      const f = sort.field;
+      const left = a.data[f.id],
+        right = b.data[f.id];
+      const diff = compareValues(f, left, right);
+      if (diff)
+        return left == null || right == null
+          ? diff
+          : diff * (sort.direction === "asc" ? 1 : -1);
+    }
+    return a.id.localeCompare(b.id);
+  });
+  return result.slice(0, Math.min(query.limit ?? 10000, 10000));
+}
+
+/** Reusable input types. Templates are plain descriptors built from these types. */
+export const fieldTypes: Record<
+  string,
+  { label: string; definition: Partial<Field> & { pgType: PgType } }
+> = {
+  ...Object.fromEntries(
+    pgTypes.map((pgType) => [
+      pgType,
+      { label: pgType, definition: { pgType } },
+    ]),
+  ),
+  multiline: {
+    label: "Multiline text",
+    definition: { pgType: "text", control: "textarea" },
+  },
+  markdown: {
+    label: "Markdown",
+    definition: { pgType: "text", control: "markdown", inputMode: "single" },
+  },
+  email: { label: "Email", definition: { pgType: "text", control: "email" } },
+  url: { label: "URL", definition: { pgType: "text", control: "url" } },
+  path: { label: "File path", definition: { pgType: "text", control: "path" } },
+  sorting: {
+    label: "Sorting",
+    definition: { pgType: "text", control: "sorting" },
+  },
+  reference: {
+    label: "Item reference",
+    definition: {
+      pgType: "text",
+      control: "reference",
+      reference: "resources",
+      referenceField: "uid",
+      relationship: "reference",
+    },
+  },
+  parent: {
+    label: "Parent item",
+    definition: {
+      pgType: "text",
+      control: "reference",
+      reference: "resources",
+      referenceField: "uid",
+      relationship: "parent",
+    },
+  },
+};
+export function fieldTypeId(f: Field): string {
+  if (f.relationship === "parent") return "parent";
+  if (f.reference) return "reference";
+  return (
+    Object.entries(fieldTypes).find(
+      ([id, type]) =>
+        !pgTypes.includes(id as PgType) &&
+        type.definition.control === f.control &&
+        type.definition.pgType === f.pgType,
+    )?.[0] ?? f.pgType
+  );
+}
+export function fieldTemplate(f: Field): Field {
+  return field(f.id, f.label, f.pgType, {
+    ...f,
+    storage: "custom",
+    required: false,
+    nullable: true,
+    generated: undefined,
+    inputMode:
+      f.inputMode ??
+      (f.array
+        ? f.choices
+          ? "multiselect"
+          : "list"
+        : f.choices
+          ? "select"
+          : "single"),
+    options: f.options ?? f.choices,
+    choices: undefined,
+  });
+}
+export const sharedFieldTemplates: Field[] = [
+  field("title", "Title"),
+  field("description", "Description", "text", { control: "textarea" }),
+  field("parent", "Parent", "text", fieldTypes.parent.definition),
+  field("tags", "Tags", "text", { array: true, inputMode: "list" }),
+  field("url", "URL", "text", { control: "url" }),
+  field("sort_order", "Sort order", "text", fieldTypes.sorting.definition),
+];
+export function initialFieldValues(fields: Field[]): Record<string, Value> {
+  return Object.fromEntries(
+    fields.flatMap((f) =>
+      f.generated
+        ? [
+            [
+              f.id,
+              f.generated === "uuid"
+                ? crypto.randomUUID()
+                : new Date().toISOString(),
+            ],
+          ]
+        : f.default !== undefined
+          ? [[f.id, structuredClone(f.default) as Value]]
+          : [],
+    ),
+  );
+}
+
+/** View choices that still permit valid creation; generated values are never editable. */
+export function fieldVisibilityOptions(
+  f: Pick<Field, "generated" | "required" | "default">,
+): NonNullable<Field["visibility"]>[] {
+  if (f.generated) return ["viewable", "hidden"];
+  if (f.required && f.default === undefined) return ["editable"];
+  return ["editable", "viewable", "hidden", "addable"];
+}

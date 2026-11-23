@@ -1,0 +1,73 @@
+version: 1
+types:
+  - id: jocki.task-list
+    name: Task list
+    mimeTypes: [application/vnd.csdb]
+    extensions: [csdb]
+    tables:
+      public.tasks:
+        required: {id: text, uid: text, dtstamp: timestamp}
+    requirements: [One independent tasks table; ID is the primary key; UID and DTSTAMP are required; title and status are optional.]
+  - id: jocki.events
+    name: Calendar events
+    mimeTypes: [application/vnd.csdb]
+    extensions: [csdb]
+    tables:
+      public.events:
+        required: {id: text, uid: text, dtstamp: text, dtstart: text}
+  - id: jocki.reminders
+    name: Reminders
+    mimeTypes: [application/vnd.csdb]
+    extensions: [csdb]
+    tables:
+      public.reminders:
+        required: {id: text, action: text, trigger: text, related: text}
+    requirements: [Receiving a reminder never authorizes native execution.]
+  - id: jocki.time-intervals
+    name: Time intervals
+    mimeTypes: [application/vnd.csdb]
+    extensions: [csdb]
+    tables:
+      public.intervals:
+        required: {id: text, title: text, started_at: text, kind: text}
+  - id: jocki.measurements
+    name: Measurements
+    mimeTypes: [application/vnd.csdb]
+    extensions: [csdb]
+    tables:
+      public.measurements:
+        required: {id: text, title: text, started_at: text}
+  - id: jocki.presets
+    name: Presets
+    mimeTypes: [application/vnd.csdb]
+    extensions: [csdb]
+    tables:
+      public.presets:
+        required: {id: text, name: text}
+  - id: jocki.github-issues
+    name: GitHub issues
+    mimeTypes: [application/vnd.csdb]
+    extensions: [csdb]
+    tables:
+      public.issues:
+        required: {id: text, repository: text, number: integer, title: text, state: text}
+  - id: jocki.mail
+    name: Mail
+    mimeTypes: [application/vnd.csdb]
+    extensions: [csdb]
+    tables:
+      public.messages:
+        required: {id: text, subject: text}
+    requirements: [Credential secrets are excluded from content.]
+  - id: jocki.workflows
+    name: Workflows
+    mimeTypes: [application/json]
+    extensions: [json]
+    requirements: [Contains nodes and edges. Opening or syncing never runs a workflow.]
+  - id: jocki.office-index
+    name: Office index
+    mimeTypes: [application/vnd.csdb]
+    extensions: [csdb]
+    tables:
+      public.documents:
+        required: {id: text, name: text, file: text, kind: text}
