@@ -191,12 +191,13 @@ it("deletes a shared version and lets another editing computer reset the rewritt
     await target.configureScope("file", id, { history: true });
     const editor = target.draft(id);
     await one.rewriteHistory(source, { id }, { kind: "drop", hash: removed });
+    // The durable document is installed before open drafts finish rebasing.
     await expect
-      .poll(() => target.doc(id).text, { timeout: 15000 })
-      .toBe("hello world");
+      .poll(() => [target.doc(id).text, editor.text, editor.dirty], {
+        timeout: 15000,
+      })
+      .toEqual(["hello world", "hello world", false]);
     expect(source.doc(id).text).toBe("hello world");
-    expect(editor.text).toBe("hello world");
-    expect(editor.dirty).toBe(false);
     await expect
       .poll(() => source.history(id).length, { timeout: 10000 })
       .toBe(2);
